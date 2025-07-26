@@ -10,13 +10,7 @@ import { getAuth, updateProfile } from "firebase/auth";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBbpyqcDvuKBut9EVWK1OdR_CwuJCL_SBE",
-  authDomain: "mytrackdesk-a9cc9.firebaseapp.com",
-  projectId: "mytrackdesk-a9cc9",
-  storageBucket: "mytrackdesk-a9cc9.firebasestorage.app",
-  messagingSenderId: "514174805512",
-  appId: "1:514174805512:web:15a36d78f19015d126d3bd",
-  measurementId: "G-Z963N1TQT5"
+
 };
 
 // Initialize Firebase
