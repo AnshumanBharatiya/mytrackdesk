@@ -1,10 +1,11 @@
-// components/WeightTracker/TrackWeight.jsx
+// components/WeightTracker/TrackWeight.jsx - Fixed with Date Format DD-MM-YY
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../../firebase";
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { toast } from "react-toastify";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingDown, TrendingUp, Trash2, Filter, Calendar, Weight as WeightIcon } from "lucide-react";
+import Swal from 'sweetalert2';
 
 export default function TrackWeight() {
   const [weights, setWeights] = useState([]);
@@ -21,10 +22,12 @@ export default function TrackWeight() {
 
   useEffect(() => {
     fetchWeights();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     applyFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weights, startDate, endDate, minWeight, maxWeight]);
 
   const fetchWeights = async () => {
@@ -47,7 +50,7 @@ export default function TrackWeight() {
           id: doc.id,
           ...data,
           dateObj: createdDate,
-          date: createdDate?.toLocaleDateString() || "N/A",
+          date: createdDate?.toLocaleDateString('en-GB') || "N/A",
           fullDate: createdDate?.toISOString().split('T')[0] || "",
         });
       });
@@ -69,7 +72,6 @@ export default function TrackWeight() {
   const applyFilters = () => {
     let filtered = [...weights];
 
-    // Date range filter
     if (startDate) {
       filtered = filtered.filter(w => w.fullDate >= startDate);
     }
@@ -77,7 +79,6 @@ export default function TrackWeight() {
       filtered = filtered.filter(w => w.fullDate <= endDate);
     }
 
-    // Weight range filter
     if (minWeight) {
       filtered = filtered.filter(w => w.weight >= parseFloat(minWeight));
     }
@@ -114,15 +115,26 @@ export default function TrackWeight() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this entry?")) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "Are you sure you want to delete this entry?!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
 
-    try {
-      await deleteDoc(doc(db, "weights", id));
-      toast.success("Weight entry deleted! 🗑️");
-      fetchWeights();
-    } catch (error) {
-      console.error("Error deleting weight:", error);
-      toast.error("Failed to delete entry!");
+    if (result.isConfirmed) {
+      try {
+        await deleteDoc(doc(db, "weights", id));
+        toast.success("Weight entry deleted! 🗑️");
+        fetchWeights();
+      } catch (error) {
+        console.error("Error deleting weight:", error);
+        toast.error("Failed to delete entry!");
+      }
     }
   };
 
@@ -143,13 +155,11 @@ export default function TrackWeight() {
     const maxWeight = Math.max(...weights);
     const range = maxWeight - minWeight;
     
-    // If range is very small (less than 5), create a fixed range around the values
     if (range < 5) {
       const avg = (minWeight + maxWeight) / 2;
       return [Math.floor(avg - 5), Math.ceil(avg + 5)];
     }
     
-    // Otherwise, add 10% padding on both sides
     const padding = range * 0.1 || 5;
     return [
       Math.floor(minWeight - padding),

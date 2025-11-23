@@ -1,3 +1,5 @@
+/* App.css */
+
 .bgSection {
   background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.8)), url("../public/img/BGI.png"); 
   background-size: cover;
@@ -5,8 +7,6 @@
   background-repeat: no-repeat;
   opacity: 0.8;
 }
-
-/* Add this to your index.css or App.css */
 
 /* Fade In Animation */
 @keyframes fadeIn {
@@ -46,21 +46,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #8b5cf6, #a855f7);
+  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #7c3aed, #9333ea);
-}
-
-/* Background animation for auth pages */
-.bgSection {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.8)), url("../public/img/BGI.png"); 
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: 0.8;
+  background: linear-gradient(to bottom, #2563eb, #7c3aed);
 }
 
 /* Glass morphism effect */
@@ -72,7 +63,7 @@
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(to right, #8b5cf6, #a855f7);
+  background: linear-gradient(to right, #3b82f6, #8b5cf6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -89,16 +80,98 @@
 
 /* Card shadow */
 .card-shadow {
-  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
 }
 
 /* Button gradient */
 .btn-gradient {
-  background: linear-gradient(to right, #8b5cf6, #a855f7);
+  background: linear-gradient(to right, #3b82f6, #8b5cf6);
   transition: all 0.3s ease;
 }
 
 .btn-gradient:hover {
-  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
   transform: translateY(-2px);
+}
+
+/* No color for emoji */
+span.no-color {
+  /* background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  background-clip: unset !important; */
+  color: white !important;
+}
+
+/* Weight Tracker Card Styles */
+.weight-tracker-card {
+  border-width: 3px;
+  border-style: solid;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.weight-tracker-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.weight-tracker-card:hover::before {
+  left: 100%;
+}
+
+.weight-tracker-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.3);
+  transform: translateY(-8px);
+}
+
+/* Coming Soon Card Styles */
+.coming-soon-card {
+  border-width: 3px;
+  border-style: solid;
+  transition: all 0.3s ease;
+  cursor: not-allowed;
+}
+
+.coming-soon-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Border utilities for Tailwind */
+.border-3 {
+  border-width: 3px;
+}
+
+/* Card hover effects - Generic */
+.dashboard-card {
+  background: white;
+  border: 3px solid #93c5fd;
+  border-radius: 1rem;
+  padding: 2rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.dashboard-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.25);
+  transform: translateY(-5px);
+}
+
+/* Smooth border color transitions */
+.border-blue-400 {
+  border-color: #60a5fa;
+}
+
+.border-gray-300 {
+  border-color: #d1d5db;
 }
