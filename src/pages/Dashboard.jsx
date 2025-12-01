@@ -6,12 +6,18 @@ import { useNavigate, Routes, Route, Link, useLocation } from "react-router-dom"
 import { collection, query, where, getDocs, limit, orderBy } from "firebase/firestore";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Menu, X, ChevronDown, Weight, BarChart3, ChevronRight, Home, TrendingDown, TrendingUp, DollarSign, Table } from "lucide-react";
+import { Menu, X, ChevronDown, Weight, BarChart3, ChevronRight, Home, TrendingDown, TrendingUp, DollarSign, Table, Calendar, HandCoins } from "lucide-react";
+
 import EnterWeight from "../components/WeightTracker/EnterWeight";
 import TrackWeight from "../components/WeightTracker/TrackWeight";
 import EnterTransaction from "../components/ExpenseTracker/EnterTransaction";
 import TrackExpense from "../components/ExpenseTracker/TrackExpense";
 import TransactionHistory from "../components/ExpenseTracker/TransactionHistory";
+import DailyExpenseTracker from "../components/ExpenseTracker/DailyExpenseTracker";
+import EnterLoan from "../components/LoanTracker/EnterLoan";
+import LoanSummary from "../components/LoanTracker/LoanSummary";
+import LoanHistory from "../components/LoanTracker/LoanHistory";
+
 
 export default function Dashboard() {
   const [userName, setUserName] = useState("");
@@ -29,6 +35,9 @@ export default function Dashboard() {
   const [expenseLoading, setExpenseLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const [loanMenuOpen, setLoanMenuOpen] = useState(true);
+  const [loanData, setLoanData] = useState({ totalBorrowed: 0, totalLent: 0, netBalance: 0 });
+  const [loanLoading, setLoanLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -36,12 +45,45 @@ export default function Dashboard() {
         setUserName(user.displayName || user.email);
         fetchLastWeight(user.uid);
         fetchExpenseData(user.uid);
+        fetchLoanData(user.uid);
       } else {
         navigate("/login");
       }
     });
     return () => unsubscribe();
   }, [navigate]);
+
+  const fetchLoanData = async (userId) => {
+    setLoanLoading(true);
+    try {
+      const q = query(
+        collection(db, "loans"),
+        where("userId", "==", userId)
+      );
+
+      const querySnapshot = await getDocs(q);
+      let borrowed = 0, lent = 0;
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.type === "borrowed") {
+          borrowed += data.amount || 0;
+        } else if (data.type === "lent") {
+          lent += data.amount || 0;
+        }
+      });
+
+      setLoanData({
+        totalBorrowed: borrowed,
+        totalLent: lent,
+        netBalance: borrowed - lent
+      });
+    } catch (error) {
+      console.log("Error fetching loan data:", error);
+    } finally {
+      setLoanLoading(false);
+    }
+  };
 
   const fetchLastWeight = async (userId) => {
     setWeightLoading(true);
@@ -271,16 +313,28 @@ export default function Dashboard() {
                   <span className="text-sm font-medium">Add Transaction</span>
                 </Link>
                 <Link
-                  to="/dashboard/expense-analytics"
+                  to="/dashboard/monthly-analytics"
                   onClick={() => setSidebarOpen(false)}
                   className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 ${
-                    isActive("/dashboard/expense-analytics")
+                    isActive("/dashboard/monthly-analytics")
                       ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
                       : "text-white hover:bg-white/10"
                   }`}
                 >
                   <BarChart3 size={18} />
-                  <span className="text-sm font-medium">Analytics</span>
+                  <span className="text-sm font-medium">Monthly Analytics</span>
+                </Link>
+                <Link
+                  to="/dashboard/daily-analytics"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 ${
+                    isActive("/dashboard/daily-analytics")
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                      : "text-white hover:bg-white/10"
+                  }`}
+                >
+                  <Calendar size={18} />
+                  <span className="text-sm font-medium">Daily Analytics</span>
                 </Link>
                 <Link
                   to="/dashboard/transaction-history"
@@ -297,6 +351,68 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+
+          {/* Loan Tracker Dropdown */}
+          <div>
+            <button
+              onClick={() => setLoanMenuOpen(!loanMenuOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-200"
+            >
+              <div className="flex items-center space-x-3">
+                <HandCoins size={20} />
+                <span className="font-medium">Loan Tracker</span>
+              </div>
+              <ChevronRight
+                size={18}
+                className={`transform transition-transform duration-200 ${
+                  loanMenuOpen ? "rotate-90" : ""
+                }`}
+              />
+            </button>
+            
+            {loanMenuOpen && (
+              <div className="ml-4 mt-2 space-y-1 border-l-2 border-blue-700 pl-4">
+                <Link
+                  to="/dashboard/add-loan"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 ${
+                    isActive("/dashboard/add-loan")
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                      : "text-white hover:bg-white/10"
+                  }`}
+                >
+                  <HandCoins size={18} />
+                  <span className="text-sm font-medium">Add Loan</span>
+                </Link>
+                <Link
+                  to="/dashboard/loan-summary"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 ${
+                    isActive("/dashboard/loan-summary")
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                      : "text-white hover:bg-white/10"
+                  }`}
+                >
+                  <BarChart3 size={18} />
+                  <span className="text-sm font-medium">Summary</span>
+                </Link>
+                <Link
+                  to="/dashboard/loan-history"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`w-full flex items-center space-x-3 px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 ${
+                    isActive("/dashboard/loan-history")
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg"
+                      : "text-white hover:bg-white/10"
+                  }`}
+                >
+                  <Table size={18} />
+                  <span className="text-sm font-medium">History</span>
+                </Link>
+              </div>
+            )}
+          </div>
+
+
         </nav>
       </div>
 
@@ -370,7 +486,7 @@ export default function Dashboard() {
                     Track your progress and achieve your goals!
                   </p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4  gap-5">
                     {/* Weight Tracker Card */}
                     <Link
                       to="/dashboard/track-weight"
@@ -417,7 +533,7 @@ export default function Dashboard() {
 
                     {/* Expense Tracker Card */}
                     <Link
-                      to="/dashboard/expense-analytics"
+                      to="/dashboard/monthly-analytics"
                       className="weight-tracker-card bg-white border-3 border-green-400 p-8 rounded-2xl shadow-lg cursor-pointer group"
                     >
                       <div className="flex items-start justify-between mb-4">
@@ -470,6 +586,60 @@ export default function Dashboard() {
                       </div>
                     </Link>
                     
+                    {/* Loan Tracker Card */}
+                    <Link
+                      to="/dashboard/loan-summary"
+                      className="weight-tracker-card bg-white border-3 border-purple-400 p-8 rounded-2xl shadow-lg cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <HandCoins size={40} className="text-purple-600 group-hover:scale-110 transition-transform" />
+                        {loanData.netBalance !== 0 && (
+                          <div className={`flex items-center space-x-1 ${loanData.netBalance > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                            {loanData.netBalance > 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+                            <span className="text-sm font-semibold">₹{Math.abs(loanData.netBalance).toFixed(0)}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <h3 className="font-bold text-2xl mb-2 text-gray-800 group-hover:text-purple-600 transition-colors">
+                        Loan Tracker
+                      </h3>
+                      
+                      {loanLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-600 border-t-transparent"></div>
+                          <span className="text-gray-500 text-sm">Loading...</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Borrowed:</span>
+                            <span className="text-lg font-bold text-orange-600">₹{loanData.totalBorrowed.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Lent:</span>
+                            <span className="text-lg font-bold text-green-600">₹{loanData.totalLent.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <span className="text-sm font-semibold text-gray-700">Net Balance:</span>
+                            <span className={`text-xl font-bold ${loanData.netBalance > 0 ? 'text-red-600' : loanData.netBalance < 0 ? 'text-blue-600' : 'text-gray-600'}`}>
+                              ₹{Math.abs(loanData.netBalance).toFixed(2)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {loanData.netBalance > 0 ? "You owe others" : loanData.netBalance < 0 ? "Others owe you" : "All settled"}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <p className="text-sm text-gray-600 group-hover:text-purple-600 transition-colors flex items-center space-x-2">
+                          <span>View details</span>
+                          <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                        </p>
+                      </div>
+                    </Link>
+
                     {/* Budget Planner - Coming Soon */}
                     <div className="coming-soon-card bg-white border-3 border-gray-300 p-8 rounded-2xl shadow-lg opacity-60">
                       <div className="flex items-center space-x-3 mb-4">
@@ -487,8 +657,12 @@ export default function Dashboard() {
             <Route path="/enter-weight" element={<EnterWeight />} />
             <Route path="/track-weight" element={<TrackWeight />} />
             <Route path="/add-transaction" element={<EnterTransaction />} />
-            <Route path="/expense-analytics" element={<TrackExpense />} />
+            <Route path="/monthly-analytics" element={<TrackExpense />} />
+            <Route path="/daily-analytics" element={<DailyExpenseTracker />} />
             <Route path="/transaction-history" element={<TransactionHistory />} />
+            <Route path="/add-loan" element={<EnterLoan />} />
+            <Route path="/loan-summary" element={<LoanSummary />} />
+            <Route path="/loan-history" element={<LoanHistory />} />
           </Routes>
         </div>
       </div>

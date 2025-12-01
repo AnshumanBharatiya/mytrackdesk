@@ -1,10 +1,11 @@
-// components/WeightTracker/TrackWeight.jsx - Fixed with Date Format DD-MM-YY
+// components/WeightTracker/TrackWeight.jsx - CORRECTED VERSION
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../../firebase";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { toast } from "react-toastify";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingDown, TrendingUp, Trash2, Filter, Calendar, Weight as WeightIcon } from "lucide-react";
+import Pagination from '../common/Pagination';
 import Swal from 'sweetalert2';
 
 export default function TrackWeight() {
@@ -12,6 +13,8 @@ export default function TrackWeight() {
   const [filteredWeights, setFilteredWeights] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ current: 0, highest: 0, lowest: 0, trend: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -27,6 +30,7 @@ export default function TrackWeight() {
 
   useEffect(() => {
     applyFilters();
+    setCurrentPage(1); // Reset to page 1 when filters change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weights, startDate, endDate, minWeight, maxWeight]);
 
@@ -138,6 +142,11 @@ export default function TrackWeight() {
     }
   };
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const chartData = filteredWeights
     .slice()
     .reverse()
@@ -190,6 +199,12 @@ export default function TrackWeight() {
       </div>
     );
   }
+
+  // Calculate pagination AFTER all the early returns
+  const totalPages = Math.ceil(filteredWeights.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentWeights = filteredWeights.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -368,7 +383,7 @@ export default function TrackWeight() {
               </tr>
             </thead>
             <tbody className="divide-y divide-blue-100">
-              {filteredWeights.map((entry, index) => (
+              {currentWeights.map((entry, index) => (
                 <tr 
                   key={entry.id} 
                   className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all ${
@@ -400,6 +415,15 @@ export default function TrackWeight() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Component - INSIDE the table container */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredWeights.length}
+        />
       </div>
     </div>
   );

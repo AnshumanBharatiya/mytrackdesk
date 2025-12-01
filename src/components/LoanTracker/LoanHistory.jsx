@@ -1,82 +1,86 @@
-// components/ExpenseTracker/TransactionHistory.jsx - With Pagination
+// components/LoanTracker/LoanHistory.jsx
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../../firebase";
 import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { toast } from "react-toastify";
-import { Filter, Calendar, Trash2, TrendingUp, TrendingDown, DollarSign, Edit } from "lucide-react";
+import { Filter, Calendar, Trash2, Edit, HandCoins, TrendingUp, TrendingDown } from "lucide-react";
 import Swal from 'sweetalert2';
 import Pagination from '../common/Pagination';
 
-export default function TransactionHistory() {
-  const [transactions, setTransactions] = useState([]);
-  const [filteredTransactions, setFilteredTransactions] = useState([]);
+export default function LoanHistory() {
+  const [loans, setLoans] = useState([]);
+  const [filteredLoans, setFilteredLoans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ totalIncome: 0, totalExpense: 0, totalInvestment: 0, balance: 0 });
   
-  // Pagination states
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
-  // Filter states
+  // Filters
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [filterPerson, setFilterPerson] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [persons, setPersons] = useState([]);
   const [categories, setCategories] = useState([]);
 
-  // Edit Modal States
+  // Edit Modal
   const [editModal, setEditModal] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [editingLoan, setEditingLoan] = useState(null);
   const [editForm, setEditForm] = useState({
     type: "",
     amount: "",
+    personName: "",
     category: "",
     date: "",
+    dueDate: "",
     description: ""
   });
 
   useEffect(() => {
-    fetchTransactions();
+    fetchLoans();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     applyFilters();
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactions, startDate, endDate, filterType, filterCategory]);
+  }, [loans, startDate, endDate, filterType, filterPerson, filterCategory]);
 
-  const fetchTransactions = async () => {
+  const fetchLoans = async () => {
     setLoading(true);
     try {
       const user = auth.currentUser;
       if (!user) return;
 
       const q = query(
-        collection(db, "transactions"),
+        collection(db, "loans"),
         where("userId", "==", user.uid)
       );
 
       const querySnapshot = await getDocs(q);
       const data = [];
+      const personSet = new Set();
       const categorySet = new Set();
       
       querySnapshot.forEach((doc) => {
-        const transaction = { id: doc.id, ...doc.data() };
-        data.push(transaction);
-        categorySet.add(transaction.category);
+        const loan = { id: doc.id, ...doc.data() };
+        data.push(loan);
+        personSet.add(loan.personName);
+        categorySet.add(loan.category);
       });
 
-      // Sort by date descending
       data.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      setTransactions(data);
-      setFilteredTransactions(data);
+      setLoans(data);
+      setFilteredLoans(data);
+      setPersons(Array.from(personSet));
       setCategories(Array.from(categorySet));
-      calculateStats(data);
     } catch (error) {
-      console.log("Error fetching transactions:", error);
+      console.log("Error fetching loans:", error);
       toast.error("Failed to load transactions!");
     } finally {
       setLoading(false);
@@ -84,50 +88,42 @@ export default function TransactionHistory() {
   };
 
   const applyFilters = () => {
-    let filtered = [...transactions];
+    let filtered = [...loans];
 
     if (filterType !== "all") {
-      filtered = filtered.filter(t => t.type === filterType);
+      filtered = filtered.filter(l => l.type === filterType);
+    }
+
+    if (filterPerson !== "all") {
+      filtered = filtered.filter(l => l.personName === filterPerson);
     }
 
     if (filterCategory !== "all") {
-      filtered = filtered.filter(t => t.category === filterCategory);
+      filtered = filtered.filter(l => l.category === filterCategory);
     }
 
     if (startDate) {
-      filtered = filtered.filter(t => t.date >= startDate);
+      filtered = filtered.filter(l => l.date >= startDate);
     }
     if (endDate) {
-      filtered = filtered.filter(t => t.date <= endDate);
+      filtered = filtered.filter(l => l.date <= endDate);
     }
 
-    setFilteredTransactions(filtered);
-    calculateStats(filtered);
-  };
-
-  const calculateStats = (data) => {
-    const income = data.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
-    const expense = data.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
-    const investment = data.filter(t => t.type === "investment").reduce((sum, t) => sum + t.amount, 0);
-    setStats({
-      totalIncome: income,
-      totalExpense: expense,
-      totalInvestment: investment,
-      balance: income - expense - investment
-    });
+    setFilteredLoans(filtered);
   };
 
   const clearFilters = () => {
     setStartDate("");
     setEndDate("");
     setFilterType("all");
+    setFilterPerson("all");
     setFilterCategory("all");
   };
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "Are you sure you want to delete this transaction?",
+      text: "Do you want to delete this loan transaction?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -138,19 +134,19 @@ export default function TransactionHistory() {
 
     if (result.isConfirmed) {
       try {
-        await deleteDoc(doc(db, "transactions", id));
+        await deleteDoc(doc(db, "loans", id));
         
         Swal.fire({
           title: 'Deleted!',
-          text: 'Transaction has been deleted.',
+          text: 'Loan transaction has been deleted.',
           icon: 'success',
           timer: 2000,
           showConfirmButton: false
         });
       
-        fetchTransactions();
+        fetchLoans();
       } catch (error) {
-        console.error("Error deleting transaction:", error);
+        console.error("Error deleting loan:", error);
         
         Swal.fire({
           title: 'Error!',
@@ -162,14 +158,16 @@ export default function TransactionHistory() {
     }
   };
 
-  const handleEdit = (transaction) => {
-    setEditingTransaction(transaction);
+  const handleEdit = (loan) => {
+    setEditingLoan(loan);
     setEditForm({
-      type: transaction.type,
-      amount: transaction.amount,
-      category: transaction.category,
-      date: transaction.date,
-      description: transaction.description || ""
+      type: loan.type,
+      amount: loan.amount,
+      personName: loan.personName,
+      category: loan.category,
+      date: loan.date,
+      dueDate: loan.dueDate || "",
+      description: loan.description || ""
     });
     setEditModal(true);
   };
@@ -177,44 +175,46 @@ export default function TransactionHistory() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     
-    if (!editForm.amount || !editForm.category || !editForm.date) {
+    if (!editForm.amount || !editForm.personName || !editForm.category || !editForm.date) {
       toast.error("Please fill all required fields!");
       return;
     }
 
     try {
-      await updateDoc(doc(db, "transactions", editingTransaction.id), {
+      await updateDoc(doc(db, "loans", editingLoan.id), {
         type: editForm.type,
         amount: parseFloat(editForm.amount),
+        personName: editForm.personName.trim(),
         category: editForm.category,
         date: editForm.date,
+        dueDate: editForm.dueDate || null,
         description: editForm.description
       });
 
       toast.success("Transaction updated successfully! ✅");
       setEditModal(false);
-      setEditingTransaction(null);
-      fetchTransactions();
+      setEditingLoan(null);
+      fetchLoans();
     } catch (error) {
-      console.error("Error updating transaction:", error);
+      console.error("Error updating loan:", error);
       toast.error("Failed to update transaction!");
     }
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB');
   };
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  // Pagination
+  const totalPages = Math.ceil(filteredLoans.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentTransactions = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
+  const currentLoans = filteredLoans.slice(indexOfFirstItem, indexOfLastItem);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    // Scroll to top of table
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -231,7 +231,7 @@ export default function TransactionHistory() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Transaction History
+          Loan Transaction History
         </h1>
         <button
           onClick={() => setShowFilters(!showFilters)}
@@ -241,7 +241,7 @@ export default function TransactionHistory() {
               : "bg-white text-blue-600 border-2 border-blue-200"
           }`}
         >
-          <Filter size={15} />
+          <Filter size={18} />
           <span>Filters</span>
         </button>
       </div>
@@ -250,7 +250,7 @@ export default function TransactionHistory() {
       {showFilters && (
         <div className="bg-white rounded-2xl shadow-xl p-6 border border-blue-100 animate-fadeIn">
           <h3 className="font-bold text-lg mb-4 text-gray-800">Filter Options</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700">Type</label>
               <select
@@ -259,9 +259,21 @@ export default function TransactionHistory() {
                 className="w-full border-2 border-blue-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Types</option>
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-                <option value="investment">Investment</option>
+                <option value="borrowed">Borrowed</option>
+                <option value="lent">Lent</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Person</label>
+              <select
+                value={filterPerson}
+                onChange={(e) => setFilterPerson(e.target.value)}
+                className="w-full border-2 border-blue-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Persons</option>
+                {persons.map(person => (
+                  <option key={person} value={person}>{person}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -298,8 +310,8 @@ export default function TransactionHistory() {
           </div>
           <div className="flex justify-between items-center mt-4">
             <p className="text-sm text-gray-600">
-              Showing <span className="font-bold text-blue-600">{filteredTransactions.length}</span> of{" "}
-              <span className="font-bold">{transactions.length}</span> transactions
+              Showing <span className="font-bold text-blue-600">{filteredLoans.length}</span> of{" "}
+              <span className="font-bold">{loans.length}</span> transactions
             </p>
             <button
               onClick={clearFilters}
@@ -311,52 +323,12 @@ export default function TransactionHistory() {
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90 mb-1">Total Income</p>
-              <p className="text-3xl font-bold">₹{stats.totalIncome.toFixed(2)}</p>
-            </div>
-            <TrendingUp size={40} className="opacity-80" />
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-red-500 to-pink-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90 mb-1">Total Expense</p>
-              <p className="text-3xl font-bold">₹{stats.totalExpense.toFixed(2)}</p>
-            </div>
-            <TrendingDown size={40} className="opacity-80" />
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90 mb-1">Total Investment</p>
-              <p className="text-3xl font-bold">₹{stats.totalInvestment.toFixed(2)}</p>
-            </div>
-            <DollarSign size={40} className="opacity-80" />
-          </div>
-        </div>
-        <div className={`bg-gradient-to-br ${stats.balance >= 0 ? 'from-purple-500 to-pink-600' : 'from-orange-500 to-red-600'} rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90 mb-1">Balance</p>
-              <p className="text-3xl font-bold">₹{stats.balance.toFixed(2)}</p>
-            </div>
-            <DollarSign size={40} className="opacity-80" />
-          </div>
-        </div>
-      </div>
-
       {/* Table */}
-      {filteredTransactions.length === 0 ? (
+      {filteredLoans.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-2xl p-12 text-center border border-blue-100">
-          <DollarSign className="mx-auto text-gray-400 mb-4" size={60} />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">No Transactions Yet</h2>
-          <p className="text-gray-600">Start by adding your first income or expense!</p>
+          <HandCoins className="mx-auto text-gray-400 mb-4" size={60} />
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">No Loan Transactions Yet</h2>
+          <p className="text-gray-600">Start by adding your first loan transaction!</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-blue-100">
@@ -369,16 +341,18 @@ export default function TransactionHistory() {
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Date</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Type</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Person</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Category</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Amount</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Due Date</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Description</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-blue-100">
-                {currentTransactions.map((transaction, index) => (
+                {currentLoans.map((loan, index) => (
                   <tr 
-                    key={transaction.id} 
+                    key={loan.id} 
                     className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all ${
                       index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                     }`}
@@ -386,49 +360,51 @@ export default function TransactionHistory() {
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       <div className="flex items-center space-x-2">
                         <Calendar size={16} className="text-blue-500" />
-                        <span>{formatDate(transaction.date)}</span>
+                        <span>{formatDate(loan.date)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                        transaction.type === 'income' 
-                          ? 'bg-green-100 text-green-800' 
-                          : transaction.type === 'expense'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-blue-100 text-blue-800'
+                        loan.type === 'borrowed' 
+                          ? 'bg-orange-100 text-orange-800' 
+                          : 'bg-green-100 text-green-800'
                       }`}>
-                        {transaction.type === 'income' ? <TrendingUp size={14} className="mr-1" /> : 
-                         transaction.type === 'investment' ? <DollarSign size={14} className="mr-1" /> :
-                         <TrendingDown size={14} className="mr-1" />}
-                        {transaction.type}
+                        {loan.type === 'borrowed' ? <TrendingDown size={14} className="mr-1" /> : <TrendingUp size={14} className="mr-1" />}
+                        {loan.type === 'borrowed' ? 'Borrowed' : 'Lent'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                      {transaction.category}
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                      {loan.personName}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {loan.category}
                     </td>
                     <td className="px-6 py-4 text-sm font-bold">
-                      <span className={transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}>
-                        {transaction.type === 'income' ? '+' : '-'}₹{transaction.amount.toFixed(2)}
+                      <span className={loan.type === 'borrowed' ? 'text-orange-600' : 'text-green-600'}>
+                        ₹{loan.amount.toFixed(2)}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {loan.dueDate ? formatDate(loan.dueDate) : <span className="text-gray-400 italic">No due date</span>}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                      {transaction.description || <span className="text-gray-400 italic">No description</span>}
+                      {loan.description || <span className="text-gray-400 italic">No description</span>}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => handleEdit(transaction)}
+                          onClick={() => handleEdit(loan)}
                           className="text-blue-500 hover:text-blue-700 hover:scale-110 transition-all transform"
                           title="Edit"
                         >
-                          <Edit size={15} />
+                          <Edit size={18} />
                         </button>
                         <button
-                          onClick={() => handleDelete(transaction.id)}
+                          onClick={() => handleDelete(loan.id)}
                           className="text-red-500 hover:text-red-700 hover:scale-110 transition-all transform"
                           title="Delete"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     </td>
@@ -438,24 +414,24 @@ export default function TransactionHistory() {
             </table>
           </div>
 
-          {/* Pagination Component */}
+          {/* Pagination */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}
             itemsPerPage={itemsPerPage}
-            totalItems={filteredTransactions.length}
+            totalItems={filteredLoans.length}
             maxVisiblePages={7}
           />
         </div>
       )}
 
-      {/* Edit Transaction Modal */}
+      {/* Edit Modal */}
       {editModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl transform scale-100 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl transform scale-100 animate-fadeIn max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Edit Transaction
+              Edit Loan Transaction
             </h2>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
@@ -465,10 +441,19 @@ export default function TransactionHistory() {
                   onChange={(e) => setEditForm({...editForm, type: e.target.value})}
                   className="w-full border-2 border-blue-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="income">Income</option>
-                  <option value="expense">Expense</option>
-                  <option value="investment">Investment</option>
+                  <option value="borrowed">Borrowed</option>
+                  <option value="lent">Lent</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700">Person Name</label>
+                <input
+                  type="text"
+                  value={editForm.personName}
+                  onChange={(e) => setEditForm({...editForm, personName: e.target.value})}
+                  className="w-full border-2 border-blue-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter person's name"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700">Amount</label>
@@ -501,6 +486,15 @@ export default function TransactionHistory() {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700">Due Date</label>
+                <input
+                  type="date"
+                  value={editForm.dueDate}
+                  onChange={(e) => setEditForm({...editForm, dueDate: e.target.value})}
+                  className="w-full border-2 border-blue-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700">Description</label>
                 <textarea
                   value={editForm.description}
@@ -521,7 +515,7 @@ export default function TransactionHistory() {
                   type="button"
                   onClick={() => {
                     setEditModal(false);
-                    setEditingTransaction(null);
+                    setEditingLoan(null);
                   }}
                   className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl hover:bg-gray-300 transition-all duration-200 transform hover:scale-105 font-medium"
                 >

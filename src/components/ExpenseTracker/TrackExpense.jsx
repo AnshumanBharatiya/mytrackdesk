@@ -1,4 +1,4 @@
-// components/ExpenseTracker/TrackExpense.jsx - Fixed with Date Format and Layout
+// components/ExpenseTracker/TrackExpense.jsx - Fixed with Clean Pie Charts
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../../firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -168,6 +168,16 @@ export default function TrackExpense() {
 
   const barData = Object.values(monthlyData).slice(-6);
 
+  // Custom label renderer for expense pie chart - NO LABELS ON CHART
+  const renderNoLabel = () => null;
+
+  // Custom label for transaction distribution - percentage only
+  const renderPercentageLabel = (entry) => {
+    const total = stats.totalIncome + stats.totalExpense + stats.totalInvestment;
+    const percent = ((entry.value / total) * 100).toFixed(0);
+    return `${percent}%`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -181,7 +191,7 @@ export default function TrackExpense() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Expense Analytics
+          Monthly Expense Analytics
         </h1>
         <button
           onClick={() => setShowFilters(!showFilters)}
@@ -342,61 +352,93 @@ export default function TrackExpense() {
 
       {/* Row 2: Two Pie Charts Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pie Chart 1: Expenses by Category */}
+        {/* Pie Chart 1: Expenses by Category - WITH LEGEND */}
         <div className="bg-white rounded-2xl shadow-2xl p-6 border border-blue-100">
           <h2 className="text-xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Expenses by Category
           </h2>
           {expensePieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={expensePieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => `${entry.name.substring(0, 10)}`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {expensePieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => `₹${value.toFixed(0)}`} />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={expensePieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={renderNoLabel}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {expensePieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => `₹${value.toFixed(0)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Custom Legend Below Chart */}
+              <div className="mt-4 grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                {expensePieData.map((entry, index) => (
+                  <div key={index} className="flex items-center space-x-2 text-xs">
+                    <div 
+                      className="w-3 h-3 rounded-sm flex-shrink-0" 
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    ></div>
+                    <span className="truncate" title={entry.name}>{entry.name}</span>
+                    <span className="text-gray-500 ml-auto">₹{entry.value.toFixed(0)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <p className="text-gray-500 text-center py-20 text-sm">No expense data</p>
           )}
         </div>
 
-        {/* Pie Chart 2: All Transaction Types */}
+        {/* Pie Chart 2: All Transaction Types - CLEAN WITH PERCENTAGE */}
         <div className="bg-white rounded-2xl shadow-2xl p-6 border border-blue-100">
           <h2 className="text-xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Transaction Distribution
           </h2>
           {allTransactionsPieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={allTransactionsPieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => `${entry.name}: ${((entry.value / (stats.totalIncome + stats.totalExpense + stats.totalInvestment)) * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  <Cell fill="#10b981" />
-                  <Cell fill="#ef4444" />
-                  <Cell fill="#3b82f6" />
-                </Pie>
-                <Tooltip formatter={(value) => `₹${value.toFixed(0)}`} />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={allTransactionsPieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={renderPercentageLabel}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    <Cell fill="#10b981" />
+                    <Cell fill="#ef4444" />
+                    <Cell fill="#3b82f6" />
+                  </Pie>
+                  <Tooltip formatter={(value) => `₹${value.toFixed(0)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Legend Below Chart */}
+              <div className="mt-4 flex justify-center space-x-6">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-sm bg-green-500"></div>
+                  <span className="text-sm font-medium">Income</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-sm bg-red-500"></div>
+                  <span className="text-sm font-medium">Expense</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-sm bg-blue-500"></div>
+                  <span className="text-sm font-medium">Investment</span>
+                </div>
+              </div>
+            </>
           ) : (
             <p className="text-gray-500 text-center py-20 text-sm">No data</p>
           )}
