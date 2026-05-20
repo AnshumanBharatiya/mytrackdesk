@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { db, auth } from "../../firebase";
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { toast } from "react-toastify";
-import { DollarSign, Plus, TrendingUp, TrendingDown, Save } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Save } from "lucide-react";
 
 export default function EnterTransaction() {
   const [type, setType] = useState("expense");
