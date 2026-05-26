@@ -13,7 +13,7 @@ const useInView = (threshold = 0.15) => {
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold });
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
-  }, []);
+  }, [threshold]);
   return [ref, visible];
 };
 
@@ -61,7 +61,7 @@ function Nav() {
           <a key={l} href={`#${l.toLowerCase().replace(/ /g, "-")}`} style={{ color: MUTED, fontSize: 13, fontWeight: 500, textDecoration: "none", letterSpacing: ".04em", transition: "color .2s" }}
             onMouseEnter={e => e.target.style.color = Y} onMouseLeave={e => e.target.style.color = MUTED}>{l}</a>
         ))}
-        <a href="#" style={{ background: Y, color: BLK, fontSize: 13, fontWeight: 800, padding: "10px 22px", textDecoration: "none", letterSpacing: ".06em", textTransform: "uppercase", transition: "transform .2s" }}
+        <a href="#trackers" style={{ background: Y, color: BLK, fontSize: 13, fontWeight: 800, padding: "10px 22px", textDecoration: "none", letterSpacing: ".06em", textTransform: "uppercase", transition: "transform .2s" }}
           onMouseEnter={e => e.target.style.transform = "scale(1.04)"} onMouseLeave={e => e.target.style.transform = "scale(1)"}>
           Get Started →
         </a>
@@ -111,7 +111,7 @@ function Hero() {
           Weight · Expenses · Loans — one clean desk to see your entire life's progress, no spreadsheets needed.
         </p>
         <div style={{ display: "flex", gap: 12 }}>
-          <a href="#" style={{ background: Y, color: BLK, fontWeight: 800, fontSize: 14, padding: "16px 36px", textDecoration: "none", letterSpacing: ".08em", textTransform: "uppercase", display: "inline-block", transition: "transform .2s" }}
+          <a href="#trackers" style={{ background: Y, color: BLK, fontWeight: 800, fontSize: 14, padding: "16px 36px", textDecoration: "none", letterSpacing: ".08em", textTransform: "uppercase", display: "inline-block", transition: "transform .2s" }}
             onMouseEnter={e => e.target.style.transform = "translateY(-2px)"} onMouseLeave={e => e.target.style.transform = "none"}>
             Start Free →
           </a>
@@ -479,7 +479,7 @@ function CTA() {
         <p style={{ fontSize: 18, color: "rgba(0,0,0,.6)", lineHeight: 1.7, maxWidth: 480, marginBottom: 48 }}>
           Free to use. No credit card. Weight, expenses, and loans — all in one desk waiting for you.
         </p>
-        <a href="#" style={{ background: BLK, color: Y, fontWeight: 800, fontSize: 15, padding: "18px 48px", textDecoration: "none", letterSpacing: ".1em", textTransform: "uppercase", display: "inline-block", transition: "transform .2s" }}
+        <a href="#trackers" style={{ background: BLK, color: Y, fontWeight: 800, fontSize: 15, padding: "18px 48px", textDecoration: "none", letterSpacing: ".1em", textTransform: "uppercase", display: "inline-block", transition: "transform .2s" }}
           onMouseEnter={e => e.target.style.transform = "translateY(-3px)"} onMouseLeave={e => e.target.style.transform = "none"}>
           Create Free Account →
         </a>
@@ -495,7 +495,7 @@ function Footer() {
       <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 22, color: WHITE, letterSpacing: 2 }}>MY<span style={{ color: Y }}>TRACK</span>DESK</div>
       <div style={{ display: "flex", gap: 32 }}>
         {["About", "Features", "Trackers", "How it works", "Login"].map(l => (
-          <a key={l} href="#" style={{ color: MUTED, fontSize: 13, textDecoration: "none", transition: "color .2s" }}
+          <a key={l} href={`#${l.toLowerCase().replace(/ /g, "-")}`} style={{ color: MUTED, fontSize: 13, textDecoration: "none", transition: "color .2s" }}
             onMouseEnter={e => e.target.style.color = Y} onMouseLeave={e => e.target.style.color = MUTED}>{l}</a>
         ))}
       </div>
