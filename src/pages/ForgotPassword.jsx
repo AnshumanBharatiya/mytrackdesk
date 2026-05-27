@@ -35,62 +35,61 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-700 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute w-96 h-96 bg-white/10 rounded-full -top-48 -left-48 animate-pulse"></div>
-        <div className="absolute w-96 h-96 bg-white/10 rounded-full -bottom-48 -right-48 animate-pulse delay-1000"></div>
-      </div>
+    <div className="min-h-screen bg-black flex items-center justify-center px-4 py-10 sm:px-6">
+      <div className="w-full max-w-md">
+        <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-yellow-400">
+          <ArrowLeft size={18} />
+          Back to home
+        </Link>
 
-      <div className="relative z-10 bg-white/95 backdrop-blur-md shadow-2xl rounded-3xl p-10 w-full max-w-md border border-white/20 transform hover:scale-105 transition-all duration-300">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-            <BarChart3 className="text-white" size={32} />
-          </div>
-          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Reset Password
-          </h2>
-          <p className="text-gray-600 mt-2">We'll send you a reset link</p>
-        </div>
-
-        <form className="space-y-6" onSubmit={handleForgotPassword}>
-          <div>
-            <label className="block text-gray-700 text-sm font-semibold mb-2">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-500" size={20} />
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your registered email"
-                className="w-full border-2 border-blue-200 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
+        <div className="rounded-xl border border-gray-800 bg-gray-950 p-6 shadow-lg sm:p-8">
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-yellow-400 text-black rounded-lg mb-4">
+              <BarChart3 size={24} />
             </div>
+            <h2 className="text-3xl font-bold text-white">Reset Password</h2>
+            <p className="text-gray-400 mt-2">We'll send you a reset link to your email</p>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-4 rounded-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 font-semibold text-lg flex items-center justify-center space-x-2"
-          >
-            <Send size={20} />
-            <span>{loading ? "Sending..." : "Send Reset Link"}</span>
-          </button>
+          <form className="space-y-6" onSubmit={handleForgotPassword}>
+            <div>
+              <label className="block text-gray-300 text-sm font-semibold mb-2">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-yellow-400" size={20} />
+                <input
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your registered email"
+                  className="w-full border border-gray-700 rounded-lg pl-12 pr-4 py-3 bg-gray-900 text-white placeholder-gray-600 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/30 transition-all"
+                />
+              </div>
+            </div>
 
-          <Link
-            to="/login"
-            className="flex items-center justify-center space-x-2 text-blue-600 hover:text-indigo-600 font-medium transition-all group"
-          >
-            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Login</span>
-          </Link>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-yellow-400 text-black py-3.5 rounded-lg hover:bg-yellow-300 transition-colors font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send size={20} />
+              <span>{loading ? "Sending..." : "Send Reset Link"}</span>
+            </button>
 
-        <div className="mt-6 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-          <p className="text-sm text-gray-700 text-center">
-            <strong>📧 Note:</strong> Check your spam folder if you don't receive the email within a few minutes.
-          </p>
+            <Link
+              to="/login"
+              className="flex items-center justify-center gap-2 text-yellow-400 hover:text-yellow-300 font-medium transition-colors group"
+            >
+              <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+              <span>Back to Login</span>
+            </Link>
+          </form>
+
+          <div className="mt-6 p-4 bg-gray-900 border border-gray-800 rounded-lg">
+            <p className="text-sm text-gray-300 text-center">
+              <strong>📧 Note:</strong> Check your spam folder if you don't receive the email within a few minutes.
+            </p>
+          </div>
         </div>
       </div>
     </div>

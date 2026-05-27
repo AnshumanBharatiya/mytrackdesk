@@ -4,6 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+
 const Landing = lazy(() => import("./pages/Landing/Landing"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
@@ -12,13 +13,14 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-700">
-      <div className="h-10 w-10 rounded-full border-4 border-slate-200 border-t-cyan-600 animate-spin" />
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0A0A0A" }}>
+      <div style={{ width: 40, height: 40, borderRadius: "50%", border: "3px solid #222", borderTopColor: "#FFE600", animation: "spin 0.8s linear infinite" }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <>
       <Router>
@@ -40,9 +42,7 @@ function App() {
           </Routes>
         </Suspense>
       </Router>
-      <ToastContainer position="top-center" autoClose={3000} />
+      <ToastContainer position="top-center" autoClose={3000} theme="dark" />
     </>
   );
 }
-
-export default App;

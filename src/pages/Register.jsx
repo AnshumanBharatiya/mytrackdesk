@@ -48,62 +48,63 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="min-h-screen bg-black lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+      {/* Left Section - Register Form */}
       <section className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
         <div className="w-full max-w-md">
-          <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-cyan-700">
+          <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-yellow-400">
             <ArrowLeft size={18} />
             Back to home
           </Link>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="rounded-xl border border-gray-800 bg-gray-950 p-6 shadow-lg sm:p-8">
             <div className="mb-8">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-600 text-white">
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-400 text-black">
                 <BarChart3 size={24} />
               </div>
-              <h2 className="text-3xl font-bold text-slate-950">Create account</h2>
-              <p className="mt-2 text-slate-600">Start your personal tracking dashboard.</p>
+              <h2 className="text-3xl font-bold text-white">Create account</h2>
+              <p className="mt-2 text-gray-400">Start your personal tracking dashboard.</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleRegister} noValidate>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Full Name</label>
+                <label className="mb-2 block text-sm font-semibold text-gray-300">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-700" size={20} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-400" size={20} />
                   <input
                     type="text"
                     placeholder="Enter your name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-12 pr-4 text-slate-900 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-900 py-3 pl-12 pr-4 text-white placeholder-gray-600 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/30"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Email</label>
+                <label className="mb-2 block text-sm font-semibold text-gray-300">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-700" size={20} />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-400" size={20} />
                   <input
                     type="text"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-12 pr-4 text-slate-900 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-900 py-3 pl-12 pr-4 text-white placeholder-gray-600 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/30"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Password</label>
+                <label className="mb-2 block text-sm font-semibold text-gray-300">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-700" size={20} />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-400" size={20} />
                   <input
                     type="password"
                     placeholder="Create a password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-12 pr-4 text-slate-900 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-900 py-3 pl-12 pr-4 text-white placeholder-gray-600 outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/30"
                   />
                 </div>
               </div>
@@ -111,7 +112,7 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-950 py-3.5 font-semibold text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-yellow-400 py-3.5 font-bold text-black hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
               >
                 <UserPlus size={20} />
                 <span>{loading ? "Registering..." : "Register"}</span>
@@ -119,16 +120,16 @@ export default function Register() {
 
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
+                  <div className="w-full border-t border-gray-800" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-4 text-slate-500">or</span>
+                  <span className="bg-gray-950 px-4 text-gray-500">or</span>
                 </div>
               </div>
 
-              <p className="text-center text-sm text-slate-600">
+              <p className="text-center text-sm text-gray-400">
                 Already have an account?{" "}
-                <Link to="/login" className="font-semibold text-cyan-700 hover:underline">
+                <Link to="/login" className="font-semibold text-yellow-400 hover:text-yellow-300">
                   Login Now
                 </Link>
               </p>
@@ -137,14 +138,15 @@ export default function Register() {
         </div>
       </section>
 
-      <section className="hidden bg-slate-950 px-10 py-12 text-white lg:flex lg:flex-col lg:justify-center">
+      {/* Right Section - Branding */}
+      <section className="hidden bg-black px-10 py-12 text-white lg:flex lg:flex-col lg:justify-center">
         <div className="max-w-md">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-cyan-300">Create your workspace</p>
+          <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-yellow-400">Create your workspace</p>
           <h1 className="text-4xl font-bold leading-tight">Track your daily records with less effort.</h1>
           <div className="mt-8 space-y-4">
             {["Private user account", "Responsive dashboard", "Charts and history views"].map((item) => (
-              <div key={item} className="flex items-center gap-3 text-slate-200">
-                <CheckCircle2 className="text-cyan-300" size={20} />
+              <div key={item} className="flex items-center gap-3 text-gray-300">
+                <CheckCircle2 className="text-yellow-400" size={20} />
                 <span>{item}</span>
               </div>
             ))}
