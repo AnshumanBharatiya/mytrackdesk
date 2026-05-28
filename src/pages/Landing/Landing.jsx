@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import Header from "../components/Header.jsx";
-import Footer from "../components/Footer.jsx";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const Y = "#FFE600";
 const BLK = "#0A0A0A";
