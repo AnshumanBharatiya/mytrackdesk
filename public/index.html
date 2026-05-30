@@ -4,17 +4,39 @@
     <meta charset="utf-8" />
 
     <!-- ✅ SVG favicon (modern browsers) -->
-    <link rel="icon" type="image/svg+xml" href="logo.svg" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="shortcut icon" href="/logo.svg" />
     <!-- Fallback for older browsers -->
-    <link rel="alternate icon" href="logo.svg" />
+    <link rel="alternate icon" href="/logo.svg" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#FFE600" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              base: "#0a0f1e",
+              surface: "#0d1428",
+              elevated: "#111c35",
+              purple: "#a78bfa",
+              green: "#34d399",
+              amber: "#f59e0b",
+              red: "#f87171",
+              blue: "#60a5fa",
+            },
+            fontFamily: { sans: ["Inter", "sans-serif"] },
+          },
+        },
+      };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <meta name="description" content="TrackDesk — Track weight, expenses, and loans in one clean personal dashboard." />
 
     <!-- Apple touch icon (iOS home screen) -->
-    <link rel="apple-touch-icon" href="logo.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
 
     <link rel="manifest" href="/manifest.json" />
 

@@ -1,9 +1,13 @@
-// components/ExpenseTracker/EnterTransaction.jsx
-import React, { useState, useEffect } from "react";
-import { db, auth } from "../../firebase";
+import React, { useEffect, useState } from "react";
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { toast } from "react-toastify";
-import { DollarSign, TrendingUp, TrendingDown, Save } from "lucide-react";
+import { DollarSign, Save, TrendingDown, TrendingUp } from "lucide-react";
+import { auth, db } from "../../firebase";
+
+const label = "block text-[11px] font-semibold tracking-wide uppercase text-[#475569] mb-2";
+const input =
+  "w-full bg-surface border border-white/[0.07] rounded-lg px-3.5 py-2.5 text-[14px] text-[#e2e8f0] outline-none focus:border-purple/60 transition-colors";
+const secondary = "bg-white/[0.04] border border-white/[0.07] text-[#94a3b8] font-medium text-[14px] py-2.5 px-5 rounded-lg hover:bg-white/[0.07]";
 
 export default function EnterTransaction() {
   const [type, setType] = useState("expense");
@@ -12,17 +16,12 @@ export default function EnterTransaction() {
   const [newCategory, setNewCategory] = useState("");
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(false);
   const [userCategories, setUserCategories] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
-  // Default categories - only one per type
-  const defaultCategories = {
-    income: "Salary",
-    expense: "Rent",
-    investment: "SIP"
-  };
+  const defaultCategories = { income: "Salary", expense: "Rent", investment: "SIP" };
 
   useEffect(() => {
     fetchUserCategories();
@@ -33,75 +32,52 @@ export default function EnterTransaction() {
     try {
       const user = auth.currentUser;
       if (!user) return;
-
-      const q = query(
-        collection(db, "transactions"),
-        where("userId", "==", user.uid),
-        where("type", "==", type)
-      );
-
-      const querySnapshot = await getDocs(q);
-      const categories = new Set();
-      
-      // Add default category
-      categories.add(defaultCategories[type]);
-      
-      // Add user's categories
-      querySnapshot.forEach((doc) => {
-        categories.add(doc.data().category);
-      });
-
+      const q = query(collection(db, "transactions"), where("userId", "==", user.uid), where("type", "==", type));
+      const snapshot = await getDocs(q);
+      const categories = new Set([defaultCategories[type]]);
+      snapshot.forEach((item) => categories.add(item.data().category));
       setUserCategories(Array.from(categories).sort());
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
   };
 
+  const resetForm = () => {
+    setAmount("");
+    setCategory("");
+    setNewCategory("");
+    setDescription("");
+    setDate(new Date().toISOString().split("T")[0]);
+    setShowNewCategory(false);
+    setEditingId(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!amount || parseFloat(amount) <= 0) {
-      return toast.error("Please enter a valid amount!");
-    }
-
+    if (!amount || parseFloat(amount) <= 0) return toast.error("Please enter a valid amount!");
     const finalCategory = showNewCategory ? newCategory.trim() : category;
-    if (!finalCategory) {
-      return toast.error("Please select or enter a category!");
-    }
-
+    if (!finalCategory) return toast.error("Please select or enter a category!");
     setLoading(true);
     try {
       const user = auth.currentUser;
-      if (!user) {
-        toast.error("You must be logged in!");
-        return;
-      }
-
+      if (!user) return toast.error("You must be logged in!");
       const transactionData = {
         userId: user.uid,
-        type: type,
+        type,
         amount: parseFloat(amount),
         category: finalCategory,
         description: description.trim(),
-        date: date,
+        date,
         createdAt: serverTimestamp(),
       };
-
       if (editingId) {
-        // Update existing transaction
         await updateDoc(doc(db, "transactions", editingId), transactionData);
-        toast.success("Transaction updated successfully! ✅");
-        setEditingId(null);
+        toast.success("Transaction updated successfully!");
       } else {
-        // Add new transaction
         await addDoc(collection(db, "transactions"), transactionData);
-        toast.success(`${type === 'expense' ? 'Expense' : type === 'income' ? 'Income' : 'Investment'} added successfully! 🎉`);
+        toast.success("Transaction added successfully!");
       }
-      
-      // Reset form
       resetForm();
-      
-      // Refresh categories
       fetchUserCategories();
     } catch (error) {
       console.error("Error saving transaction:", error);
@@ -111,17 +87,6 @@ export default function EnterTransaction() {
     }
   };
 
-  const resetForm = () => {
-    setAmount("");
-    setCategory("");
-    setNewCategory("");
-    setDescription("");
-    setDate(new Date().toISOString().split('T')[0]);
-    setShowNewCategory(false);
-    setEditingId(null);
-  };
-
-  // Function to load transaction for editing
   window.editTransaction = (transaction) => {
     setType(transaction.type);
     setAmount(transaction.amount.toString());
@@ -129,205 +94,98 @@ export default function EnterTransaction() {
     setDescription(transaction.description || "");
     setDate(transaction.date);
     setEditingId(transaction.id);
-    
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    toast.info("Editing transaction - Update the fields and save");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const typeButton = (value, Icon, text) => (
+    <button
+      type="button"
+      onClick={() => {
+        setType(value);
+        setCategory("");
+      }}
+      disabled={editingId}
+      className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-semibold transition-colors ${
+        type === value ? "bg-purple text-white" : "bg-white/[0.04] text-[#94a3b8] hover:bg-white/[0.07]"
+      } ${editingId ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      <Icon size={16} />
+      {text}
+    </button>
+  );
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 border border-blue-100">
-        <div className="flex items-center space-x-4 mb-8">
-          <div className={`w-16 h-16 ${
-            type === 'expense' ? 'bg-gradient-to-br from-red-500 to-pink-600' : 
-            type === 'income' ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
-            'bg-gradient-to-br from-blue-500 to-indigo-600'
-          } rounded-2xl flex items-center justify-center shadow-lg`}>
-            <DollarSign className="text-white" size={32} />
+      <div className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-lg bg-purple/10 text-purple flex items-center justify-center">
+            <DollarSign size={22} />
           </div>
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {editingId ? "Edit Transaction" : "Add Transaction"}
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">Track your income, expenses & investments</p>
+            <h1 className="text-[22px] font-bold text-[#e2e8f0]">{editingId ? "Edit Transaction" : "Add Transaction"}</h1>
+            <p className="text-[13px] text-[#475569] mt-1">Track income, expenses, and investments.</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Type Selection - 3 Options */}
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold mb-3 text-gray-700">Transaction Type</label>
+            <label className={label}>Transaction Type</label>
             <div className="grid grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setType("expense");
-                  setCategory("");
-                  fetchUserCategories();
-                }}
-                disabled={editingId}
-                className={`flex items-center justify-center space-x-2 py-3 rounded-xl font-semibold transition-all ${
-                  type === "expense"
-                    ? "bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                } ${editingId ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <TrendingDown size={18} />
-                <span className="text-sm">Expense</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setType("income");
-                  setCategory("");
-                  fetchUserCategories();
-                }}
-                disabled={editingId}
-                className={`flex items-center justify-center space-x-2 py-3 rounded-xl font-semibold transition-all ${
-                  type === "income"
-                    ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                } ${editingId ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <TrendingUp size={18} />
-                <span className="text-sm">Income</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setType("investment");
-                  setCategory("");
-                  fetchUserCategories();
-                }}
-                disabled={editingId}
-                className={`flex items-center justify-center space-x-2 py-3 rounded-xl font-semibold transition-all ${
-                  type === "investment"
-                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                } ${editingId ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Save size={18} />
-                <span className="text-sm">Investment</span>
-              </button>
+              {typeButton("expense", TrendingDown, "Expense")}
+              {typeButton("income", TrendingUp, "Income")}
+              {typeButton("investment", Save, "Investment")}
             </div>
           </div>
 
-          {/* Amount and Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-2 text-gray-700">
-                Amount <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full border-2 border-blue-200 rounded-xl px-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
+              <label className={label}>Amount</label>
+              <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={input} />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-2 text-gray-700">Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full border-2 border-blue-200 rounded-xl px-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
+              <label className={label}>Date</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={input} />
             </div>
           </div>
 
-          {/* Category Selection */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
-              Category <span className="text-red-500">*</span>
-            </label>
+            <label className={label}>Category</label>
             {!showNewCategory ? (
-              <div className="space-y-3">
-                <select
-                  value={category}
-                  onChange={(e) => {
-                    if (e.target.value === "new") {
-                      setShowNewCategory(true);
-                      setCategory("");
-                    } else {
-                      setCategory(e.target.value);
-                    }
-                  }}
-                  className="w-full border-2 border-blue-200 rounded-xl px-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
-                >
-                  <option value="">Select a category</option>
-                  {userCategories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                  <option value="new">+ Create New Category</option>
-                </select>
-                <p className="text-xs text-gray-500">💡 Only your categories are shown</p>
-              </div>
-            ) : (
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="Enter new category name"
-                  className="flex-1 border-2 border-blue-200 rounded-xl px-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowNewCategory(false);
-                    setNewCategory("");
-                  }}
-                  className="px-4 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
-              Description <span className="text-gray-400">(Optional)</span>
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add notes about this transaction..."
-              rows="4"
-              className="w-full border-2 border-blue-200 rounded-xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-            ></textarea>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex space-x-3">
-            <button
-              type="submit"
-              disabled={loading}
-              className={`flex-1 py-4 rounded-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 font-semibold text-lg flex items-center justify-center space-x-2 ${
-                type === "expense"
-                  ? "bg-gradient-to-r from-red-500 to-pink-600 text-white"
-                  : type === "income"
-                  ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white"
-                  : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-              }`}
-            >
-              <Save size={20} />
-              <span>{loading ? "Saving..." : editingId ? "Update Transaction" : `Add ${type === 'expense' ? 'Expense' : type === 'income' ? 'Income' : 'Investment'}`}</span>
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-6 py-4 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all transform hover:scale-105 font-semibold"
+              <select
+                value={category}
+                onChange={(e) => {
+                  if (e.target.value === "new") {
+                    setShowNewCategory(true);
+                    setCategory("");
+                  } else {
+                    setCategory(e.target.value);
+                  }
+                }}
+                className={input}
               >
-                Cancel
-              </button>
+                <option value="">Select a category</option>
+                {userCategories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                <option value="new">+ Create New Category</option>
+              </select>
+            ) : (
+              <div className="flex gap-2">
+                <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Enter new category" className={input} />
+                <button type="button" onClick={() => setShowNewCategory(false)} className={secondary}>Cancel</button>
+              </div>
             )}
+          </div>
+
+          <div>
+            <label className={label}>Description</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add notes about this transaction" rows="4" className={`${input} resize-none`} />
+          </div>
+
+          <div className="flex gap-3">
+            <button type="submit" disabled={loading} className="flex-1 bg-purple text-white font-semibold text-[14px] py-2.5 rounded-lg hover:opacity-85 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50">
+              <Save size={18} />
+              <span>{loading ? "Saving..." : editingId ? "Update Transaction" : "Save Transaction"}</span>
+            </button>
+            {editingId && <button type="button" onClick={resetForm} className={secondary}>Cancel</button>}
           </div>
         </form>
       </div>

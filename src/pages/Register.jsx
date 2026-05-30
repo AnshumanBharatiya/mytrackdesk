@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { sendPasswordResetEmail } from "firebase/auth";
-import { ArrowLeft, Mail, Send } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { createUserWithEmailAndPassword, onAuthStateChanged, updateProfile } from "firebase/auth";
+import { Lock, Mail, User, UserPlus, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
 import { auth } from "../firebase";
 import { getFirebaseAuthErrorMessage } from "../utils/firebaseError";
@@ -18,20 +18,24 @@ function AuthPanel({ title, sub, points }) {
       background: "#0d0d0d", borderRight: "1px solid #1a1a1a",
       padding: "60px 48px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "100%",
     }}>
-      <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} viewBox="0 0 500 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        {/* Large diamond shape */}
-        <polygon points="250,40 460,280 250,520 40,280" fill="none" stroke="#FFE600" strokeWidth="1" opacity="0.07"/>
-        <polygon points="250,100 400,280 250,460 100,280" fill="#FFE600" opacity="0.03"/>
-        {/* Corner accents */}
+      <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} viewBox="0 0 500 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        {/* Large triangle bottom-right */}
+        <polygon points="500,800 500,440 140,800" fill="#FFE600" opacity="0.06"/>
+        {/* Top-left accent triangle */}
+        <polygon points="0,0 320,0 0,220" fill="#FFE600" opacity="0.05"/>
+        {/* Cross lines */}
+        <line x1="0" y1="340" x2="500" y2="100" stroke="#FFE600" strokeWidth="1" opacity="0.06"/>
+        <line x1="0" y1="440" x2="500" y2="200" stroke="#FFE600" strokeWidth="1" opacity="0.04"/>
+        {/* Rect outlines */}
+        <rect x="30" y="560" width="70" height="70" fill="none" stroke="#FFE600" strokeWidth="1.5" opacity="0.1"/>
+        <rect x="50" y="580" width="30" height="30" fill="#FFE600" opacity="0.05"/>
+        {/* Corner brackets */}
         <polyline points="30,30 30,70 70,70" fill="none" stroke="#FFE600" strokeWidth="2" opacity="0.3"/>
-        <polyline points="470,670 470,630 430,630" fill="none" stroke="#FFE600" strokeWidth="2" opacity="0.3"/>
-        {/* Horizontal lines */}
-        <line x1="30" y1="580" x2="180" y2="580" stroke="#FFE600" strokeWidth="1" opacity="0.12"/>
-        <line x1="30" y1="596" x2="120" y2="596" stroke="#FFE600" strokeWidth="1" opacity="0.08"/>
+        <polyline points="470,770 470,730 430,730" fill="none" stroke="#FFE600" strokeWidth="2" opacity="0.3"/>
         {/* Dot grid */}
-        {[0,1,2].map(row =>
-          [0,1,2,3,4].map(col => (
-            <circle key={`${row}-${col}`} cx={60 + col*70} cy={560 + row*28} r="1.5" fill="#FFE600" opacity="0.1"/>
+        {[0,1,2,3,4].map(row =>
+          [0,1,2,3].map(col => (
+            <circle key={`${row}-${col}`} cx={300 + col*40} cy={280 + row*50} r="1.5" fill="#FFE600" opacity="0.1"/>
           ))
         )}
       </svg>
@@ -69,26 +73,34 @@ const inputBase = {
   fontFamily: "inherit", borderRadius: 0,
 };
 
-export default function ForgotPassword() {
+export default function Register() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.body.style.margin = "0";
     document.body.style.background = BLK;
-  }, []);
+    const unsub = onAuthStateChanged(auth, u => { if (u) navigate("/dashboard"); });
+    return unsub;
+  }, [navigate]);
 
   const isValidEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
-  const handleReset = async e => {
+  const handleRegister = async e => {
     e.preventDefault(); toast.dismiss();
+    if (!name.trim()) return toast.error("Name is required!");
     if (!email.trim()) return toast.error("Email is required!");
     if (!isValidEmail(email)) return toast.error("Enter a valid email!");
+    if (!password.trim()) return toast.error("Password is required!");
+    if (password.length < 6) return toast.error("Min 6 characters!");
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
-      setSent(true); toast.success("Reset link sent!");
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: name });
+      toast.success("Account created!"); navigate("/dashboard");
     } catch (err) { toast.error(getFirebaseAuthErrorMessage(err.code)); }
     finally { setLoading(false); }
   };
@@ -100,69 +112,51 @@ export default function ForgotPassword() {
 
         {/* LEFT — design panel */}
         <AuthPanel
-          title={"RESET\nPASSWORD."}
-          sub="No worries — we'll send a secure reset link straight to your inbox."
-          points={["Secure email-based reset", "Link expires after 1 hour", "Your data stays safe always"]}
+          title={"CREATE\nACCOUNT."}
+          sub="Start tracking weight, expenses, and loans — all in one clean, private dashboard."
+          points={["Free forever, no credit card needed", "Private account via Firebase Auth", "Available on web & Android"]}
         />
 
         {/* RIGHT — form */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 40px" }}>
           <div style={{ width: "100%", maxWidth: 400 }}>
-            {sent ? (
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 52, marginBottom: 20 }}>📧</div>
-                <h2 style={{ color: "#fff", fontSize: 24, fontWeight: 800, marginBottom: 10 }}>Check your inbox</h2>
-                <p style={{ color: "#444", fontSize: 13, lineHeight: 1.75, marginBottom: 32 }}>
-                  We sent a reset link to{" "}
-                  <span style={{ color: Y, fontWeight: 600 }}>{email}</span>.
-                  Check spam if it doesn't arrive soon.
-                </p>
-                <Link to="/login"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 8, background: Y, color: BLK, fontWeight: 800, fontSize: 13, padding: "13px 28px", textDecoration: "none", letterSpacing: ".08em", textTransform: "uppercase" }}>
-                  <ArrowLeft size={15}/> Back to Login
-                </Link>
-              </div>
-            ) : (
-              <>
-                <h2 style={{ color: "#fff", fontSize: 26, fontWeight: 800, marginBottom: 6, letterSpacing: -.3 }}>Reset password</h2>
-                <p style={{ color: "#444", fontSize: 13, marginBottom: 32 }}>Enter your email and we'll send a reset link.</p>
+            <h2 style={{ color: "#fff", fontSize: 26, fontWeight: 800, marginBottom: 6, letterSpacing: -.3 }}>Create account</h2>
+            <p style={{ color: "#444", fontSize: 13, marginBottom: 32 }}>Join TrackDesk — free and private, always.</p>
 
-                <form onSubmit={handleReset}>
-                  <div style={{ marginBottom: 24 }}>
-                    <label style={{ display: "block", color: "#666", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 8 }}>Email Address</label>
-                    <div style={{ position: "relative" }}>
-                      <Mail size={15} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: Y }} />
-                      <input type="text" placeholder="you@example.com" value={email}
-                        onChange={e => setEmail(e.target.value)} style={inputBase}
-                        onFocus={e => e.target.style.borderColor = Y}
-                        onBlur={e => e.target.style.borderColor = "#1e1e1e"} />
-                    </div>
+            <form onSubmit={handleRegister}>
+              {[
+                { label: "Full Name", type: "text", val: name, set: setName, icon: <User size={15} style={{ position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:Y}}/>, ph: "Your name" },
+                { label: "Email", type: "text", val: email, set: setEmail, icon: <Mail size={15} style={{ position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:Y}}/>, ph: "you@example.com" },
+                { label: "Password", type: "password", val: password, set: setPassword, icon: <Lock size={15} style={{ position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:Y}}/>, ph: "Min. 6 characters" },
+              ].map((f, i) => (
+                <div key={i} style={{ marginBottom: i === 2 ? 28 : 16 }}>
+                  <label style={{ display: "block", color: "#666", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 8 }}>{f.label}</label>
+                  <div style={{ position: "relative" }}>
+                    {f.icon}
+                    <input type={f.type} placeholder={f.ph} value={f.val}
+                      onChange={e => f.set(e.target.value)} style={inputBase}
+                      onFocus={e => e.target.style.borderColor = Y}
+                      onBlur={e => e.target.style.borderColor = "#1e1e1e"} />
                   </div>
-
-                  <button type="submit" disabled={loading}
-                    style={{ width: "100%", background: Y, color: BLK, border: "none", padding: "14px", fontSize: 13, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: loading ? .7 : 1, transition: "opacity .2s" }}>
-                    <Send size={16}/> {loading ? "Sending…" : "Send Reset Link"}
-                  </button>
-                </form>
-
-                <div style={{ marginTop: 20, background: "#0d0d0d", border: "1px solid #1a1a1a", padding: "12px 14px" }}>
-                  <p style={{ color: "#444", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
-                    <span style={{ color: Y, fontWeight: 700 }}>Tip:</span> Check spam if the email doesn't arrive in a few minutes.
-                  </p>
                 </div>
+              ))}
 
-                <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ flex: 1, height: 1, background: "#161616" }} />
-                  <span style={{ color: "#2a2a2a", fontSize: 12 }}>or</span>
-                  <div style={{ flex: 1, height: 1, background: "#161616" }} />
-                </div>
+              <button type="submit" disabled={loading}
+                style={{ width: "100%", background: Y, color: BLK, border: "none", padding: "14px", fontSize: 13, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: loading ? .7 : 1, transition: "opacity .2s" }}>
+                <UserPlus size={16}/> {loading ? "Creating…" : "Create Account"}
+              </button>
+            </form>
 
-                <p style={{ textAlign: "center", color: "#444", fontSize: 13, marginTop: 20 }}>
-                  Remembered it?{" "}
-                  <Link to="/login" style={{ color: Y, fontWeight: 700, textDecoration: "none" }}>Login now</Link>
-                </p>
-              </>
-            )}
+            <div style={{ margin: "24px 0", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1, height: 1, background: "#161616" }} />
+              <span style={{ color: "#2a2a2a", fontSize: 12 }}>or</span>
+              <div style={{ flex: 1, height: 1, background: "#161616" }} />
+            </div>
+
+            <p style={{ textAlign: "center", color: "#444", fontSize: 13 }}>
+              Already have an account?{" "}
+              <Link to="/login" style={{ color: Y, fontWeight: 700, textDecoration: "none" }}>Login now</Link>
+            </p>
           </div>
         </div>
       </div>

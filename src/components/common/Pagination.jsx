@@ -94,10 +94,10 @@ export default function Pagination({
   return (
     <div className="flex flex-col md:flex-row items-center justify-between gap-4 my-6 px-4">
       {/* Items info */}
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-blue-600">{startItem}</span> to{' '}
-        <span className="font-semibold text-blue-600">{endItem}</span> of{' '}
-        <span className="font-semibold text-gray-900">{totalItems}</span> entries
+      <div className="text-[12px] text-[#475569]">
+        Showing <span className="font-semibold text-purple">{startItem}</span> to{' '}
+        <span className="font-semibold text-purple">{endItem}</span> of{' '}
+        <span className="font-semibold text-[#94a3b8]">{totalItems}</span> entries
       </div>
 
       {/* Pagination buttons */}
@@ -108,8 +108,8 @@ export default function Pagination({
           disabled={currentPage === 1}
           className={`flex items-center justify-center w-10 h-10 rounded-lg border-2 transition-all transform hover:scale-105 ${
             currentPage === 1
-              ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-              : 'border-blue-500 text-blue-600 hover:bg-blue-50 hover:shadow-md'
+              ? 'border-white/[0.07] text-[#475569] cursor-not-allowed'
+              : 'border-white/[0.07] text-purple hover:bg-white/[0.04]'
           }`}
           title="Previous page"
         >
@@ -138,8 +138,8 @@ export default function Pagination({
                 onClick={() => onPageChange(page)}
                 className={`flex items-center justify-center w-10 h-10 rounded-lg border-2 font-semibold transition-all transform hover:scale-105 ${
                   currentPage === page
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white border-transparent shadow-lg'
-                    : 'border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-500 hover:shadow-md'
+                    ? 'bg-purple text-white border-transparent'
+                    : 'border-white/[0.07] text-purple hover:bg-white/[0.04]'
                 }`}
                 title={`Go to page ${page}`}
               >
@@ -155,8 +155,8 @@ export default function Pagination({
           disabled={currentPage === totalPages}
           className={`flex items-center justify-center w-10 h-10 rounded-lg border-2 transition-all transform hover:scale-105 ${
             currentPage === totalPages
-              ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-              : 'border-blue-500 text-blue-600 hover:bg-blue-50 hover:shadow-md'
+              ? 'border-white/[0.07] text-[#475569] cursor-not-allowed'
+              : 'border-white/[0.07] text-purple hover:bg-white/[0.04]'
           }`}
           title="Next page"
         >
