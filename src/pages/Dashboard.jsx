@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { BarChart3, ChevronRight, DollarSign, HandCoins, Scale } from "lucide-react";
 import { auth, db } from "../firebase";
 import Layout from "../components/dashboard/Layout";
-import EnterWeight from "../components/WeightTracker/EnterWeight";
 import TrackWeight from "../components/WeightTracker/TrackWeight";
+import StepCount from "../components/WeightTracker/StepCount";
 import EnterTransaction from "../components/ExpenseTracker/EnterTransaction";
 import TrackExpense from "../components/ExpenseTracker/TrackExpense";
 import TransactionHistory from "../components/ExpenseTracker/TransactionHistory";
@@ -214,8 +214,9 @@ export default function Dashboard() {
             />
           }
         />
-        <Route path="/enter-weight" element={<EnterWeight />} />
+        <Route path="/enter-weight" element={<Navigate to="/dashboard/track-weight" replace />} />
         <Route path="/track-weight" element={<TrackWeight />} />
+        <Route path="/step-count" element={<StepCount />} />
         <Route path="/add-transaction" element={<EnterTransaction />} />
         <Route path="/monthly-analytics" element={<TrackExpense />} />
         <Route path="/daily-analytics" element={<DailyExpenseTracker />} />

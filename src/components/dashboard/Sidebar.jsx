@@ -7,6 +7,7 @@ import {
   Calendar,
   ChevronRight,
   DollarSign,
+  Footprints,
   HandCoins,
   Home,
   LogOut,
@@ -61,7 +62,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = auth.currentUser;
-  const [weightOpen, setWeightOpen] = useState(location.pathname.includes("weight"));
+  const [weightOpen, setWeightOpen] = useState(location.pathname.includes("weight") || location.pathname.includes("step-count"));
   const [expenseOpen, setExpenseOpen] = useState(location.pathname.includes("transaction") || location.pathname.includes("analytics"));
   const [loanOpen, setLoanOpen] = useState(location.pathname.includes("loan"));
 
@@ -107,11 +108,11 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
         <SectionLabel>Trackers</SectionLabel>
         <nav className="space-y-0.5">
           <MainLink to="/dashboard" icon={Home} onClick={onClose}>Dashboard</MainLink>
-          {groupButton(location.pathname.includes("weight"), Scale, "Weight Tracker", weightOpen, () => setWeightOpen((value) => !value))}
+          {groupButton(location.pathname.includes("weight") || location.pathname.includes("step-count"), Scale, "Weight Tracker", weightOpen, () => setWeightOpen((value) => !value))}
           {weightOpen && (
             <>
-              <SubLink to="/dashboard/enter-weight" icon={PlusCircle} onClick={onClose}>Enter Weight</SubLink>
               <SubLink to="/dashboard/track-weight" icon={BarChart3} onClick={onClose}>Track Weight</SubLink>
+              <SubLink to="/dashboard/step-count" icon={Footprints} onClick={onClose}>Step Count</SubLink>
             </>
           )}
           {groupButton(location.pathname.includes("transaction") || location.pathname.includes("analytics"), DollarSign, "Expense Tracker", expenseOpen, () => setExpenseOpen((value) => !value))}

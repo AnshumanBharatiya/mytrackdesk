@@ -7,8 +7,9 @@ import { auth } from "../../firebase";
 
 const titles = {
   "/dashboard": "Dashboard",
-  "/dashboard/enter-weight": "Enter Weight",
+  "/dashboard/enter-weight": "Track Weight",
   "/dashboard/track-weight": "Track Weight",
+  "/dashboard/step-count": "Step Count",
   "/dashboard/add-transaction": "Add Transaction",
   "/dashboard/monthly-analytics": "Monthly Analytics",
   "/dashboard/daily-analytics": "Daily Analytics",

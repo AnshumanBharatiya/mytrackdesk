@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { collection, deleteDoc, doc, getDocs, query, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, where } from "firebase/firestore";
 import { toast } from "react-toastify";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Calendar, Filter, Trash2, Weight as WeightIcon } from "lucide-react";
+import { Calendar, Filter, PlusCircle, Save, Trash2, Weight as WeightIcon, X } from "lucide-react";
 import Swal from "sweetalert2";
 import Pagination from "../common/Pagination";
 import { auth, db } from "../../firebase";
@@ -29,6 +29,11 @@ export default function TrackWeight() {
   const [endDate, setEndDate] = useState("");
   const [minWeight, setMinWeight] = useState("");
   const [maxWeight, setMaxWeight] = useState("");
+  const [entryModalOpen, setEntryModalOpen] = useState(false);
+  const [weight, setWeight] = useState("");
+  const [unit, setUnit] = useState("kg");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchWeights();
@@ -117,19 +122,104 @@ export default function TrackWeight() {
     }
   };
 
+  const handleAddWeight = async (event) => {
+    event.preventDefault();
+    if (!weight || isNaN(weight) || parseFloat(weight) <= 0) return toast.error("Please enter a valid weight!");
+
+    setSaving(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) return toast.error("You must be logged in!");
+      await addDoc(collection(db, "weights"), {
+        userId: user.uid,
+        weight: parseFloat(weight),
+        unit,
+        notes: notes.trim(),
+        createdAt: serverTimestamp(),
+      });
+      toast.success("Weight recorded successfully!");
+      setWeight("");
+      setNotes("");
+      setEntryModalOpen(false);
+      await fetchWeights();
+    } catch (error) {
+      console.error("Error adding weight:", error);
+      toast.error("Failed to record weight!");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const entryModal = entryModalOpen && (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-2xl rounded-xl border border-white/[0.07] bg-elevated p-6 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-[18px] font-bold text-[#e2e8f0]">Enter Weight</h2>
+            <p className="text-[13px] text-[#475569] mt-1">Add a new weight entry and refresh the chart.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEntryModalOpen(false)}
+            className="rounded-md p-1.5 text-[#475569] hover:bg-white/[0.07] hover:text-[#94a3b8]"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleAddWeight} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <label className={label}>Weight</label>
+              <input type="number" step="0.1" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="Enter your weight" className={input} />
+            </div>
+            <div>
+              <label className={label}>Unit</label>
+              <select value={unit} onChange={(event) => setUnit(event.target.value)} className={input}>
+                <option value="kg">Kilograms (kg)</option>
+                <option value="lbs">Pounds (lbs)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={label}>Notes</label>
+            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add notes about diet, exercise, or progress" rows="4" className={`${input} resize-none`} />
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button type="submit" disabled={saving} className="flex-1 bg-purple text-white font-semibold text-[14px] py-2.5 rounded-lg hover:opacity-85 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50">
+              <Save size={18} />
+              <span>{saving ? "Saving..." : "Save Weight"}</span>
+            </button>
+            <button type="button" onClick={() => setEntryModalOpen(false)} className="bg-white/[0.04] border border-white/[0.07] text-[#94a3b8] font-medium text-[14px] py-2.5 px-5 rounded-lg hover:bg-white/[0.07]">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
   const chartData = filteredWeights.slice().reverse().map((w) => ({ date: w.date, weight: w.weight }));
   const totalPages = Math.ceil(filteredWeights.length / itemsPerPage);
   const currentWeights = filteredWeights.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const unit = filteredWeights[0]?.unit || "kg";
+  const displayUnit = filteredWeights[0]?.unit || "kg";
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 rounded-full border-[3px] border-white/[0.07] border-t-purple animate-spin mx-auto" /></div>;
 
   if (!weights.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center bg-white/[0.04] border border-white/[0.07] rounded-xl">
-        <WeightIcon size={40} color="#475569" />
-        <p className="text-[14px] text-[#475569] mt-3">No weight data yet.</p>
-      </div>
+      <>
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-white/[0.04] border border-white/[0.07] rounded-xl">
+          <WeightIcon size={40} color="#475569" />
+          <p className="text-[14px] text-[#475569] mt-3">No weight data yet.</p>
+          <button onClick={() => setEntryModalOpen(true)} className="mt-5 bg-purple text-white font-semibold text-[14px] py-2.5 px-5 rounded-lg hover:opacity-85 transition-opacity flex items-center gap-2">
+            <PlusCircle size={16} /> Enter Weight
+          </button>
+        </div>
+        {entryModal}
+      </>
     );
   }
 
@@ -140,9 +230,14 @@ export default function TrackWeight() {
           <h1 className="text-[22px] font-bold text-[#e2e8f0]">Track Weight</h1>
           <p className="text-[13px] text-[#475569] mt-1">Review trends and history.</p>
         </div>
-        <button onClick={() => setShowFilters(!showFilters)} className="bg-white/[0.04] border border-white/[0.07] text-[#94a3b8] font-medium text-[14px] py-2.5 px-5 rounded-lg hover:bg-white/[0.07] flex items-center gap-2">
-          <Filter size={16} /> Filters
-        </button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button onClick={() => setEntryModalOpen(true)} className="bg-purple text-white font-semibold text-[14px] py-2.5 px-5 rounded-lg hover:opacity-85 transition-opacity flex items-center gap-2">
+            <PlusCircle size={16} /> Enter Weight
+          </button>
+          <button onClick={() => setShowFilters(!showFilters)} className="bg-white/[0.04] border border-white/[0.07] text-[#94a3b8] font-medium text-[14px] py-2.5 px-5 rounded-lg hover:bg-white/[0.07] flex items-center gap-2">
+            <Filter size={16} /> Filters
+          </button>
+        </div>
       </div>
 
       {showFilters && (
@@ -166,7 +261,7 @@ export default function TrackWeight() {
         ].map(([title, value]) => (
           <div key={title} className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-5">
             <p className="text-[13px] font-semibold text-[#94a3b8]">{title}</p>
-            <p className="text-[26px] font-bold text-[#e2e8f0] mt-1">{value} <span className="text-[14px] text-[#475569]">{unit}</span></p>
+            <p className="text-[26px] font-bold text-[#e2e8f0] mt-1">{value} <span className="text-[14px] text-[#475569]">{displayUnit}</span></p>
           </div>
         ))}
       </div>
@@ -213,6 +308,7 @@ export default function TrackWeight() {
         </div>
         <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} itemsPerPage={itemsPerPage} totalItems={filteredWeights.length} />
       </div>
+      {entryModal}
     </div>
   );
 }
