@@ -2,11 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { BarChart3, ChevronRight, DollarSign, HandCoins, Scale } from "lucide-react";
+import { ChevronRight, DollarSign, HandCoins, MapPinned, Scale } from "lucide-react";
 import { auth, db } from "../firebase";
 import Layout from "../components/dashboard/Layout";
 import TrackWeight from "../components/WeightTracker/TrackWeight";
 import StepCount from "../components/WeightTracker/StepCount";
+import CreatePlan from "../components/BudgetPlanner/CreatePlan";
+import PlanDetail from "../components/BudgetPlanner/PlanDetail";
+import PlanList from "../components/BudgetPlanner/PlanList";
 import EnterTransaction from "../components/ExpenseTracker/EnterTransaction";
 import TrackExpense from "../components/ExpenseTracker/TrackExpense";
 import TransactionHistory from "../components/ExpenseTracker/TransactionHistory";
@@ -99,15 +102,16 @@ function Overview({ userName, lastWeight, weightLoading, expenseData, expenseLoa
           <div className="text-[12px] text-purple mt-3 hover:opacity-80 flex items-center gap-1">View details <ChevronRight size={14} /></div>
         </Link>
 
-        <div className={`${cardClass} opacity-40 pointer-events-none`}>
+        <Link to="/dashboard/budget-plans" className={cardClass}>
           <div className="flex items-center justify-between">
-            <BarChart3 size={24} className="text-[#475569]" />
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/[0.04] text-[#94a3b8]">Soon</span>
+            <MapPinned size={24} className="text-green" />
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-green/10 text-green">New</span>
           </div>
           <h2 className="text-[13px] font-semibold text-[#94a3b8] mt-3">Budget Planner</h2>
-          <div className="text-[26px] font-bold text-[#e2e8f0] mt-1">Coming Soon</div>
-          <div className={muted}><span>Planned monthly limits</span></div>
-        </div>
+          <div className="text-[26px] font-bold text-[#e2e8f0] mt-1">Trip Plans</div>
+          <div className={muted}><span>Create budgets and track items</span></div>
+          <div className="text-[12px] text-purple mt-3 hover:opacity-80 flex items-center gap-1">View details <ChevronRight size={14} /></div>
+        </Link>
       </div>
     </div>
   );
@@ -217,6 +221,9 @@ export default function Dashboard() {
         <Route path="/enter-weight" element={<Navigate to="/dashboard/track-weight" replace />} />
         <Route path="/track-weight" element={<TrackWeight />} />
         <Route path="/step-count" element={<StepCount />} />
+        <Route path="/budget-plans" element={<PlanList />} />
+        <Route path="/budget-plans/create" element={<CreatePlan />} />
+        <Route path="/budget-plans/:planId" element={<PlanDetail />} />
         <Route path="/add-transaction" element={<EnterTransaction />} />
         <Route path="/monthly-analytics" element={<TrackExpense />} />
         <Route path="/daily-analytics" element={<DailyExpenseTracker />} />

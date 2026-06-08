@@ -11,6 +11,7 @@ import {
   HandCoins,
   Home,
   LogOut,
+  MapPinned,
   PlusCircle,
   Scale,
   Table,
@@ -65,6 +66,7 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
   const [weightOpen, setWeightOpen] = useState(location.pathname.includes("weight") || location.pathname.includes("step-count"));
   const [expenseOpen, setExpenseOpen] = useState(location.pathname.includes("transaction") || location.pathname.includes("analytics"));
   const [loanOpen, setLoanOpen] = useState(location.pathname.includes("loan"));
+  const [budgetOpen, setBudgetOpen] = useState(location.pathname.includes("budget-plans"));
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -130,6 +132,13 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
               <SubLink to="/dashboard/add-loan" icon={PlusCircle} onClick={onClose}>Add Loan</SubLink>
               <SubLink to="/dashboard/loan-summary" icon={BarChart3} onClick={onClose}>Summary</SubLink>
               <SubLink to="/dashboard/loan-history" icon={Table} onClick={onClose}>History</SubLink>
+            </>
+          )}
+          {groupButton(location.pathname.includes("budget-plans"), MapPinned, "Budget Planner", budgetOpen, () => setBudgetOpen((value) => !value))}
+          {budgetOpen && (
+            <>
+              <SubLink to="/dashboard/budget-plans" icon={Table} onClick={onClose}>My Plans</SubLink>
+              <SubLink to="/dashboard/budget-plans/create" icon={PlusCircle} onClick={onClose}>Create Plan</SubLink>
             </>
           )}
         </nav>

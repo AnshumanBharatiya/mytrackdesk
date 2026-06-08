@@ -17,6 +17,8 @@ const titles = {
   "/dashboard/add-loan": "Add Loan",
   "/dashboard/loan-summary": "Loan Summary",
   "/dashboard/loan-history": "Loan History",
+  "/dashboard/budget-plans": "Budget Planner",
+  "/dashboard/budget-plans/create": "Create Budget Plan",
 };
 
 const initials = (value) =>
@@ -76,7 +78,7 @@ export default function DashboardHeader({ onMenuClick }) {
           <button onClick={onMenuClick} className="md:hidden text-[#94a3b8] hover:text-purple" title="Open menu">
             <Menu size={20} />
           </button>
-          <h1 className="truncate text-[15px] font-semibold text-[#e2e8f0]">{titles[location.pathname] || "Dashboard"}</h1>
+          <h1 className="truncate text-[15px] font-semibold text-[#e2e8f0]">{titles[location.pathname] || (location.pathname.includes("/dashboard/budget-plans/") ? "Plan Detail" : "Dashboard")}</h1>
         </div>
 
         <div className="flex shrink-0 items-center gap-2 md:gap-3">
