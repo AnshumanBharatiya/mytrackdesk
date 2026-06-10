@@ -9,6 +9,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const SharedPlanView = lazy(() => import("./components/BudgetPlanner/SharedPlanView"));
 
 function PageLoader() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/shared/plan/:shareToken" element={<SharedPlanView />} />
             <Route
               path="/dashboard/*"
               element={
