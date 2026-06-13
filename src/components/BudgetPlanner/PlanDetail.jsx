@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Calculator, CalendarDays, FileDown, Link as LinkIcon, MapPinned, MessageSquare, PlusCircle, Save, Trash2, Users, WalletCards } from "lucide-react";
+import { CalendarDays, Link as LinkIcon, MapPinned, MessageSquare, PlusCircle, Trash2, WalletCards } from "lucide-react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { auth, db } from "../../firebase";
-import { budgetCategories, categoryStyles, convertCurrency, currencies, emptyCategoryLimits, formatDate, inputClass, labelClass, makeShareToken, money, primaryButton, secondaryButton, statusStyles } from "./budgetUtils";
+import { budgetCategories, categoryStyles, formatDate, inputClass, labelClass, makeShareToken, money, primaryButton, secondaryButton, statusStyles } from "./budgetUtils";
 
 export default function PlanDetail() {
   const { planId } = useParams();
@@ -16,40 +16,12 @@ export default function PlanDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [shareSaving, setShareSaving] = useState(false);
-  const [settingsSaving, setSettingsSaving] = useState(false);
-  const [form, setForm] = useState({ category: "Travel", title: "", amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
-  const [collaboratorEmail, setCollaboratorEmail] = useState("");
-  const [limitDraft, setLimitDraft] = useState(emptyCategoryLimits());
   const [commentText, setCommentText] = useState("");
-  const [convertTo, setConvertTo] = useState("USD");
+  const [form, setForm] = useState({ category: "Travel", title: "", amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
 
-  const fetchPlan = async () => {
-    setLoading(true);
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
-      const snap = await getDoc(doc(db, "budgetPlans", planId));
-      const data = snap.data();
-      const collaboratorEmails = data?.collaboratorEmails || [];
-      if (!snap.exists() || (data.userId !== user.uid && !collaboratorEmails.includes(user.email?.toLowerCase()))) {
-        toast.error("Plan not found!");
-        navigate("/dashboard/budget-plans");
-        return;
-      }
-      setPlan({ id: snap.id, ...data });
-      setLimitDraft({ ...emptyCategoryLimits(), ...(data.categoryLimits || {}) });
-      await fetchItems();
-      await fetchComments(data.shareToken);
-    } catch (error) {
-      console.error("Error loading plan:", error);
-      toast.error("Failed to load plan!");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchItems = async () => {
-    const snapshot = await getDocs(query(collection(db, "budgetItems"), where("planId", "==", planId)));
+  const fetchItems = async (userId = auth.currentUser?.uid) => {
+    if (!userId) return;
+    const snapshot = await getDocs(query(collection(db, "budgetItems"), where("userId", "==", userId), where("planId", "==", planId)));
     const rows = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
     setItems(rows);
@@ -66,6 +38,29 @@ export default function PlanDetail() {
     setComments(rows);
   };
 
+  const fetchPlan = async () => {
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      const snap = await getDoc(doc(db, "budgetPlans", planId));
+      if (!snap.exists() || snap.data().userId !== user.uid) {
+        toast.error("Plan not found!");
+        navigate("/dashboard/budget-plans");
+        return;
+      }
+      const data = { id: snap.id, ...snap.data() };
+      setPlan(data);
+      await fetchItems(user.uid);
+      await fetchComments(data.shareToken);
+    } catch (error) {
+      console.error("Error loading plan:", error);
+      toast.error("Failed to load plan!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPlan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,9 +68,6 @@ export default function PlanDetail() {
 
   const spent = useMemo(() => items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [items]);
   const progress = plan?.totalBudget ? Math.min((spent / plan.totalBudget) * 100, 100) : 0;
-  const currentUser = auth.currentUser;
-  const isOwner = currentUser?.uid === plan?.userId;
-  const canEdit = isOwner || (plan?.collaboratorEmails || []).includes(currentUser?.email?.toLowerCase());
   const groupedItems = useMemo(() => {
     return budgetCategories.map((category) => ({
       category,
@@ -119,7 +111,7 @@ export default function PlanDetail() {
       }
       toast.success("Budget item added!");
       setForm({ category: "Travel", title: "", amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
-      fetchItems();
+      fetchItems(user.uid);
     } catch (error) {
       console.error("Error adding budget item:", error);
       toast.error("Failed to add budget item!");
@@ -139,9 +131,7 @@ export default function PlanDetail() {
     });
     if (!result.isConfirmed) return;
     await deleteDoc(doc(db, "budgetItems", itemId));
-    if (plan.shareEnabled) {
-      await deleteDoc(doc(db, "sharedBudgetItems", itemId));
-    }
+    if (plan.shareEnabled) await deleteDoc(doc(db, "sharedBudgetItems", itemId));
     toast.success("Item deleted!");
     fetchItems();
   };
@@ -161,7 +151,6 @@ export default function PlanDetail() {
       currency: plan.currency || "INR",
       status: plan.status || "Planning",
       notes: plan.notes || "",
-      categoryLimits: plan.categoryLimits || emptyCategoryLimits(),
       shareEnabled: true,
       updatedAt: serverTimestamp(),
     });
@@ -191,61 +180,38 @@ export default function PlanDetail() {
     await batch.commit();
   };
 
-  const syncSharedPlan = async (nextPlan = plan) => {
-    if (!nextPlan?.shareEnabled || !nextPlan?.shareToken) return;
-    await setDoc(doc(db, "sharedBudgetPlans", nextPlan.shareToken), {
-      shareToken: nextPlan.shareToken,
-      planId,
-      title: nextPlan.title,
-      origin: nextPlan.origin || "",
-      destination: nextPlan.destination || "",
-      startDate: nextPlan.startDate || "",
-      endDate: nextPlan.endDate || "",
-      totalBudget: Number(nextPlan.totalBudget) || 0,
-      currency: nextPlan.currency || "INR",
-      status: nextPlan.status || "Planning",
-      notes: nextPlan.notes || "",
-      categoryLimits: nextPlan.categoryLimits || emptyCategoryLimits(),
-      shareEnabled: true,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-  };
-
-  const handleAddCollaborator = async (event) => {
-    event.preventDefault();
-    if (!isOwner) return toast.error("Only owner can manage collaborators.");
-    const email = collaboratorEmail.trim().toLowerCase();
-    if (!email || !email.includes("@")) return toast.error("Enter a valid email!");
-    const nextEmails = Array.from(new Set([...(plan.collaboratorEmails || []), email]));
-    await updateDoc(doc(db, "budgetPlans", planId), { collaboratorEmails: nextEmails, updatedAt: serverTimestamp() });
-    setPlan((current) => ({ ...current, collaboratorEmails: nextEmails }));
-    setCollaboratorEmail("");
-    toast.success("Collaborator added!");
-  };
-
-  const handleRemoveCollaborator = async (email) => {
-    if (!isOwner) return;
-    const nextEmails = (plan.collaboratorEmails || []).filter((item) => item !== email);
-    await updateDoc(doc(db, "budgetPlans", planId), { collaboratorEmails: nextEmails, updatedAt: serverTimestamp() });
-    setPlan((current) => ({ ...current, collaboratorEmails: nextEmails }));
-    toast.success("Collaborator removed!");
-  };
-
-  const handleSaveLimits = async () => {
-    if (!isOwner) return toast.error("Only owner can update category limits.");
-    setSettingsSaving(true);
+  const handleToggleShare = async () => {
+    setShareSaving(true);
     try {
-      const cleanLimits = budgetCategories.reduce((limits, category) => ({
-        ...limits,
-        [category]: limitDraft[category] ? Number(limitDraft[category]) : "",
-      }), {});
-      await updateDoc(doc(db, "budgetPlans", planId), { categoryLimits: cleanLimits, updatedAt: serverTimestamp() });
-      const nextPlan = { ...plan, categoryLimits: cleanLimits };
-      setPlan(nextPlan);
-      await syncSharedPlan(nextPlan);
-      toast.success("Category limits saved!");
+      const token = plan.shareToken || makeShareToken();
+      const nextEnabled = !plan.shareEnabled;
+      await updateDoc(doc(db, "budgetPlans", planId), {
+        shareToken: token,
+        shareEnabled: nextEnabled,
+        updatedAt: serverTimestamp(),
+      });
+      if (nextEnabled) {
+        await publishSharedPlan(token);
+      } else {
+        await setDoc(doc(db, "sharedBudgetPlans", token), { shareEnabled: false, updatedAt: serverTimestamp() }, { merge: true });
+      }
+      setPlan((current) => ({ ...current, shareToken: token, shareEnabled: nextEnabled }));
+      toast.success(nextEnabled ? "Share link enabled!" : "Sharing disabled!");
+    } catch (error) {
+      console.error("Error updating share link:", error);
+      toast.error("Failed to update share link!");
     } finally {
-      setSettingsSaving(false);
+      setShareSaving(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied!");
+    } catch (error) {
+      toast.error("Could not copy link. Please copy it manually.");
     }
   };
 
@@ -275,48 +241,6 @@ export default function PlanDetail() {
     toast.success("Comment added!");
   };
 
-  const handleExportPdf = () => {
-    window.print();
-  };
-
-  const handleToggleShare = async () => {
-    setShareSaving(true);
-    try {
-      const token = plan.shareToken || makeShareToken();
-      const nextEnabled = !plan.shareEnabled;
-      await updateDoc(doc(db, "budgetPlans", planId), {
-        shareToken: token,
-        shareEnabled: nextEnabled,
-        updatedAt: serverTimestamp(),
-      });
-      if (nextEnabled) {
-        await publishSharedPlan(token);
-      } else {
-        await setDoc(doc(db, "sharedBudgetPlans", token), {
-          shareEnabled: false,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-      }
-      setPlan((current) => ({ ...current, shareToken: token, shareEnabled: nextEnabled }));
-      toast.success(nextEnabled ? "Share link enabled!" : "Sharing disabled!");
-    } catch (error) {
-      console.error("Error updating share link:", error);
-      toast.error("Failed to update share link!");
-    } finally {
-      setShareSaving(false);
-    }
-  };
-
-  const handleCopyShareLink = async () => {
-    if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Share link copied!");
-    } catch (error) {
-      toast.error("Could not copy link. Please copy it manually.");
-    }
-  };
-
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/[0.07] border-t-purple" /></div>;
   }
@@ -332,266 +256,64 @@ export default function PlanDetail() {
               <h1 className="text-[22px] font-bold text-[#e2e8f0]">{plan.title}</h1>
               <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusStyles[plan.status] || statusStyles.Planning}`}>{plan.status}</span>
             </div>
-            <p className="mt-2 flex items-center gap-2 text-[13px] text-[#475569]">
-              <MapPinned size={15} />
-              {plan.origin || "Start"} to {plan.destination}
-            </p>
-            <p className="mt-1 flex items-center gap-2 text-[13px] text-[#475569]">
-              <CalendarDays size={15} />
-              {formatDate(plan.startDate)} - {formatDate(plan.endDate)}
-            </p>
+            <p className="mt-2 flex items-center gap-2 text-[13px] text-[#475569]"><MapPinned size={15} />{plan.origin || "Start"} to {plan.destination}</p>
+            <p className="mt-1 flex items-center gap-2 text-[13px] text-[#475569]"><CalendarDays size={15} />{formatDate(plan.startDate)} - {formatDate(plan.endDate)}</p>
             {plan.notes && <p className="mt-4 max-w-3xl text-[13px] leading-6 text-[#94a3b8]">{plan.notes}</p>}
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button onClick={handleExportPdf} className={`${secondaryButton} inline-flex items-center justify-center gap-2`}>
-              <FileDown size={16} />
-              Export PDF
-            </button>
-            <Link to="/dashboard/budget-plans" className={`${secondaryButton} text-center no-underline`}>Back to Plans</Link>
-          </div>
+          <Link to="/dashboard/budget-plans" className={`${secondaryButton} text-center no-underline`}>Back to Plans</Link>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-white/[0.07] bg-surface p-5">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-[#475569]">Total Budget</p>
-            <p className="mt-2 text-[24px] font-bold text-[#e2e8f0]">{money(plan.totalBudget, plan.currency)}</p>
-          </div>
-          <div className="rounded-xl border border-white/[0.07] bg-surface p-5">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-[#475569]">Spent</p>
-            <p className="mt-2 text-[24px] font-bold text-purple">{money(spent, plan.currency)}</p>
-          </div>
-          <div className="rounded-xl border border-white/[0.07] bg-surface p-5">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-[#475569]">Remaining</p>
-            <p className={`mt-2 text-[24px] font-bold ${plan.totalBudget - spent >= 0 ? "text-green" : "text-red"}`}>{money(plan.totalBudget - spent, plan.currency)}</p>
-          </div>
+          <div className="rounded-xl border border-white/[0.07] bg-surface p-5"><p className="text-[12px] font-semibold uppercase tracking-wide text-[#475569]">Total Budget</p><p className="mt-2 text-[24px] font-bold text-[#e2e8f0]">{money(plan.totalBudget, plan.currency)}</p></div>
+          <div className="rounded-xl border border-white/[0.07] bg-surface p-5"><p className="text-[12px] font-semibold uppercase tracking-wide text-[#475569]">Spent</p><p className="mt-2 text-[24px] font-bold text-purple">{money(spent, plan.currency)}</p></div>
+          <div className="rounded-xl border border-white/[0.07] bg-surface p-5"><p className="text-[12px] font-semibold uppercase tracking-wide text-[#475569]">Remaining</p><p className={`mt-2 text-[24px] font-bold ${plan.totalBudget - spent >= 0 ? "text-green" : "text-red"}`}>{money(plan.totalBudget - spent, plan.currency)}</p></div>
         </div>
 
         <div className="mt-6">
-          <div className="mb-2 flex justify-between text-[12px] text-[#94a3b8]">
-            <span>Budget progress</span>
-            <span>{progress.toFixed(0)}%</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
-            <div className="h-full rounded-full bg-purple transition-all" style={{ width: `${progress}%` }} />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-5 xl:col-span-2">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple/10 text-purple">
-              <WalletCards size={20} />
-            </div>
-            <div>
-              <h2 className="text-[18px] font-bold text-[#e2e8f0]">Category Limits</h2>
-              <p className="mt-1 text-[13px] text-[#475569]">Set optional limits for each budget category.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {budgetCategories.map((category) => {
-              const used = items.filter((item) => item.category === category).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-              const limit = Number(plan.categoryLimits?.[category]) || 0;
-              const percent = limit ? Math.min((used / limit) * 100, 100) : 0;
-              return (
-                <div key={category} className="rounded-xl border border-white/[0.07] bg-surface p-4">
-                  <label className={labelClass}>{category}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={limitDraft[category] || ""}
-                    onChange={(event) => setLimitDraft((current) => ({ ...current, [category]: event.target.value }))}
-                    disabled={!isOwner}
-                    className={inputClass}
-                    placeholder="No limit"
-                  />
-                  <div className="mt-3 flex justify-between text-[11px] text-[#94a3b8]">
-                    <span>{money(used, plan.currency)} used</span>
-                    <span>{limit ? `${percent.toFixed(0)}%` : "No limit"}</span>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
-                    <div className={`h-full rounded-full ${limit && used > limit ? "bg-red" : "bg-purple"}`} style={{ width: `${percent}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {isOwner && (
-            <button onClick={handleSaveLimits} disabled={settingsSaving} className={`${primaryButton} mt-5 inline-flex items-center gap-2`}>
-              <Save size={16} />
-              {settingsSaving ? "Saving..." : "Save Limits"}
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green/10 text-green">
-                <Calculator size={20} />
-              </div>
-              <div>
-                <h2 className="text-[18px] font-bold text-[#e2e8f0]">Currency</h2>
-                <p className="mt-1 text-[13px] text-[#475569]">Offline estimate.</p>
-              </div>
-            </div>
-            <label className={labelClass}>Convert plan total to</label>
-            <select value={convertTo} onChange={(event) => setConvertTo(event.target.value)} className={inputClass}>
-              {currencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
-            </select>
-            <div className="mt-4 rounded-lg border border-white/[0.07] bg-surface p-4">
-              <p className="text-[12px] text-[#475569]">Total</p>
-              <p className="mt-1 text-[22px] font-bold text-[#e2e8f0]">{money(convertCurrency(plan.totalBudget, plan.currency, convertTo), convertTo)}</p>
-              <p className="mt-2 text-[12px] text-[#475569]">Spent: {money(convertCurrency(spent, plan.currency, convertTo), convertTo)}</p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue/10 text-blue">
-                <Users size={20} />
-              </div>
-              <div>
-                <h2 className="text-[18px] font-bold text-[#e2e8f0]">Collaborators</h2>
-                <p className="mt-1 text-[13px] text-[#475569]">Owner can allow editing.</p>
-              </div>
-            </div>
-            {isOwner && (
-              <form onSubmit={handleAddCollaborator} className="flex gap-2">
-                <input value={collaboratorEmail} onChange={(event) => setCollaboratorEmail(event.target.value)} className={inputClass} placeholder="email@example.com" />
-                <button className={primaryButton}>Add</button>
-              </form>
-            )}
-            <div className="mt-4 space-y-2">
-              {(plan.collaboratorEmails || []).length ? (
-                plan.collaboratorEmails.map((email) => (
-                  <div key={email} className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.07] bg-surface px-3 py-2 text-[13px] text-[#94a3b8]">
-                    <span className="truncate">{email}</span>
-                    {isOwner && <button onClick={() => handleRemoveCollaborator(email)} className="text-[#475569] hover:text-red">Remove</button>}
-                  </div>
-                ))
-              ) : (
-                <p className="text-[13px] text-[#475569]">No collaborators yet.</p>
-              )}
-            </div>
-          </div>
+          <div className="mb-2 flex justify-between text-[12px] text-[#94a3b8]"><span>Budget progress</span><span>{progress.toFixed(0)}%</span></div>
+          <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]"><div className="h-full rounded-full bg-purple transition-all" style={{ width: `${progress}%` }} /></div>
         </div>
       </div>
 
       <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-6">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple/10 text-purple">
-            <PlusCircle size={21} />
-          </div>
-          <div>
-            <h2 className="text-[18px] font-bold text-[#e2e8f0]">Add Budget Item</h2>
-            <p className="mt-1 text-[13px] text-[#475569]">Add travel, stay, food, activity, shopping, or misc costs.</p>
-          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple/10 text-purple"><PlusCircle size={21} /></div>
+          <div><h2 className="text-[18px] font-bold text-[#e2e8f0]">Add Budget Item</h2><p className="mt-1 text-[13px] text-[#475569]">Add travel, stay, food, activity, shopping, or misc costs.</p></div>
         </div>
 
         <form onSubmit={handleAddItem} className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <div className="lg:col-span-2">
-            <label className={labelClass}>Category</label>
-            <select value={form.category} onChange={(event) => update("category", event.target.value)} className={inputClass}>
-              {budgetCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-            </select>
-          </div>
-          <div className="lg:col-span-3">
-            <label className={labelClass}>Item</label>
-            <input value={form.title} onChange={(event) => update("title", event.target.value)} className={inputClass} placeholder="Hotel advance" />
-          </div>
-          <div className="lg:col-span-2">
-            <label className={labelClass}>Amount</label>
-            <input type="number" min="1" step="1" value={form.amount} onChange={(event) => update("amount", event.target.value)} className={inputClass} placeholder="4500" />
-          </div>
-          <div className="lg:col-span-2">
-            <label className={labelClass}>Date</label>
-            <input type="date" value={form.date} onChange={(event) => update("date", event.target.value)} className={inputClass} />
-          </div>
-          <div className="lg:col-span-3">
-            <label className={labelClass}>Notes</label>
-            <input value={form.notes} onChange={(event) => update("notes", event.target.value)} className={inputClass} placeholder="Optional" />
-          </div>
-          <div className="lg:col-span-12">
-            <button type="submit" disabled={saving} className={`${primaryButton} w-full sm:w-auto`}>
-              {saving ? "Adding..." : "Add Item"}
-            </button>
-          </div>
+          <div className="lg:col-span-2"><label className={labelClass}>Category</label><select value={form.category} onChange={(event) => update("category", event.target.value)} className={inputClass}>{budgetCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div>
+          <div className="lg:col-span-3"><label className={labelClass}>Item</label><input value={form.title} onChange={(event) => update("title", event.target.value)} className={inputClass} placeholder="Hotel advance" /></div>
+          <div className="lg:col-span-2"><label className={labelClass}>Amount</label><input type="number" min="1" step="1" value={form.amount} onChange={(event) => update("amount", event.target.value)} className={inputClass} placeholder="4500" /></div>
+          <div className="lg:col-span-2"><label className={labelClass}>Date</label><input type="date" value={form.date} onChange={(event) => update("date", event.target.value)} className={inputClass} /></div>
+          <div className="lg:col-span-3"><label className={labelClass}>Notes</label><input value={form.notes} onChange={(event) => update("notes", event.target.value)} className={inputClass} placeholder="Optional" /></div>
+          <div className="lg:col-span-12"><button type="submit" disabled={saving} className={`${primaryButton} w-full sm:w-auto`}>{saving ? "Adding..." : "Add Item"}</button></div>
         </form>
       </div>
 
       <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-5">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="text-[18px] font-bold text-[#e2e8f0]">Share Link</h2>
-            <p className="mt-1 text-[13px] text-[#475569]">Enable a public read-only link for this plan.</p>
-          </div>
+          <div><h2 className="text-[18px] font-bold text-[#e2e8f0]">Share Link</h2><p className="mt-1 text-[13px] text-[#475569]">Enable a public read-only link for this plan.</p></div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <button onClick={handleToggleShare} disabled={shareSaving} className={`${plan.shareEnabled ? secondaryButton : primaryButton} inline-flex items-center justify-center gap-2`}>
-              <LinkIcon size={16} />
-              {shareSaving ? "Saving..." : plan.shareEnabled ? "Disable Sharing" : "Generate Share Link"}
-            </button>
-            {plan.shareEnabled && (
-              <button onClick={handleCopyShareLink} className={`${secondaryButton} inline-flex items-center justify-center gap-2`}>
-                Copy Link
-              </button>
-            )}
+            <button onClick={handleToggleShare} disabled={shareSaving} className={`${plan.shareEnabled ? secondaryButton : primaryButton} inline-flex items-center justify-center gap-2`}><LinkIcon size={16} />{shareSaving ? "Saving..." : plan.shareEnabled ? "Disable Sharing" : "Generate Share Link"}</button>
+            {plan.shareEnabled && <button onClick={handleCopyShareLink} className={`${secondaryButton} inline-flex items-center justify-center gap-2`}>Copy Link</button>}
           </div>
         </div>
-        <div className="mt-4 overflow-x-auto rounded-lg border border-dashed border-white/[0.07] bg-surface px-3.5 py-3 text-[13px] text-[#94a3b8]">
-          {plan.shareEnabled ? shareUrl : "Sharing is disabled. Generate a link when you are ready to share."}
-        </div>
+        <div className="mt-4 overflow-x-auto rounded-lg border border-dashed border-white/[0.07] bg-surface px-3.5 py-3 text-[13px] text-[#94a3b8]">{plan.shareEnabled ? shareUrl : "Sharing is disabled. Generate a link when you are ready to share."}</div>
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <WalletCards size={20} className="text-purple" />
-          <h2 className="text-[18px] font-bold text-[#e2e8f0]">Budget Items</h2>
-        </div>
-
+        <div className="flex items-center gap-2"><WalletCards size={20} className="text-purple" /><h2 className="text-[18px] font-bold text-[#e2e8f0]">Budget Items</h2></div>
         {!items.length ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.04] py-16 text-center">
-            <WalletCards size={40} color="#475569" />
-            <p className="mt-3 text-[14px] text-[#475569]">No budget items yet.</p>
-          </div>
+          <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.04] py-16 text-center"><WalletCards size={40} color="#475569" /><p className="mt-3 text-[14px] text-[#475569]">No budget items yet.</p></div>
         ) : (
           groupedItems.map((group) => (
             <div key={group.category} className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.04]">
-              <div className="flex items-center justify-between border-b border-white/[0.07] bg-surface px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${categoryStyles[group.category]}`}>{group.category}</span>
-                  {Number(plan.categoryLimits?.[group.category]) > 0 && (
-                    <span className={`text-[11px] ${group.total > Number(plan.categoryLimits[group.category]) ? "text-red" : "text-[#475569]"}`}>
-                      Limit {money(plan.categoryLimits[group.category], plan.currency)}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[13px] font-semibold text-[#e2e8f0]">{money(group.total, plan.currency)}</span>
-              </div>
+              <div className="flex items-center justify-between border-b border-white/[0.07] bg-surface px-4 py-3"><span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${categoryStyles[group.category]}`}>{group.category}</span><span className="text-[13px] font-semibold text-[#e2e8f0]">{money(group.total, plan.currency)}</span></div>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-[13px]">
-                  <thead className="bg-surface">
-                    <tr>
-                      {["Date", "Item", "Notes", "Amount", "Action"].map((head) => (
-                        <th key={head} className="border-b border-white/[0.07] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-[#475569]">{head}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.items.map((item) => (
-                      <tr key={item.id} className="hover:bg-white/[0.04]">
-                        <td className="border-b border-white/[0.07] px-4 py-3 text-[#e2e8f0]">{formatDate(item.date)}</td>
-                        <td className="border-b border-white/[0.07] px-4 py-3 font-medium text-[#e2e8f0]">{item.title}</td>
-                        <td className="border-b border-white/[0.07] px-4 py-3 text-[#94a3b8]">{item.notes || <span className="text-[#475569]">No notes</span>}</td>
-                        <td className="border-b border-white/[0.07] px-4 py-3 font-semibold text-[#e2e8f0]">{money(item.amount, plan.currency)}</td>
-                        <td className="border-b border-white/[0.07] px-4 py-3">
-                          <button onClick={() => handleDeleteItem(item.id)} className="rounded-md p-1.5 text-[#475569] transition-colors hover:bg-red/10 hover:text-red">
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  <thead className="bg-surface"><tr>{["Date", "Item", "Notes", "Amount", "Action"].map((head) => <th key={head} className="border-b border-white/[0.07] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-[#475569]">{head}</th>)}</tr></thead>
+                  <tbody>{group.items.map((item) => <tr key={item.id} className="hover:bg-white/[0.04]"><td className="border-b border-white/[0.07] px-4 py-3 text-[#e2e8f0]">{formatDate(item.date)}</td><td className="border-b border-white/[0.07] px-4 py-3 font-medium text-[#e2e8f0]">{item.title}</td><td className="border-b border-white/[0.07] px-4 py-3 text-[#94a3b8]">{item.notes || <span className="text-[#475569]">No notes</span>}</td><td className="border-b border-white/[0.07] px-4 py-3 font-semibold text-[#e2e8f0]">{money(item.amount, plan.currency)}</td><td className="border-b border-white/[0.07] px-4 py-3"><button onClick={() => handleDeleteItem(item.id)} className="rounded-md p-1.5 text-[#475569] transition-colors hover:bg-red/10 hover:text-red"><Trash2 size={16} /></button></td></tr>)}</tbody>
                 </table>
               </div>
             </div>
@@ -601,39 +323,22 @@ export default function PlanDetail() {
 
       <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-6">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber/10 text-amber">
-            <MessageSquare size={20} />
-          </div>
-          <div>
-            <h2 className="text-[18px] font-bold text-[#e2e8f0]">Comments</h2>
-            <p className="mt-1 text-[13px] text-[#475569]">Discuss this plan with collaborators and shared viewers.</p>
-          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber/10 text-amber"><MessageSquare size={20} /></div>
+          <div><h2 className="text-[18px] font-bold text-[#e2e8f0]">Comments</h2><p className="mt-1 text-[13px] text-[#475569]">Phase 1: comments for owner and shared viewers.</p></div>
         </div>
 
-        {canEdit && (
-          <form onSubmit={handleAddComment} className="mb-5 flex flex-col gap-3 sm:flex-row">
-            <input value={commentText} onChange={(event) => setCommentText(event.target.value)} className={inputClass} placeholder="Add a comment" />
-            <button className={`${primaryButton} inline-flex items-center justify-center gap-2`}>
-              <MessageSquare size={16} />
-              Comment
-            </button>
-          </form>
-        )}
+        <form onSubmit={handleAddComment} className="mb-5 flex flex-col gap-3 sm:flex-row">
+          <input value={commentText} onChange={(event) => setCommentText(event.target.value)} className={inputClass} placeholder="Add a comment" />
+          <button className={`${primaryButton} inline-flex items-center justify-center gap-2`}><MessageSquare size={16} />Comment</button>
+        </form>
 
         <div className="space-y-3">
-          {comments.length ? (
-            comments.map((comment) => (
-              <div key={`${comment.source}-${comment.id}`} className="rounded-lg border border-white/[0.07] bg-surface p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[13px] font-semibold text-[#e2e8f0]">{comment.authorName || "Guest"}</span>
-                  <span className="text-[11px] text-[#475569]">{comment.createdAt?.toDate?.().toLocaleString("en-GB") || "Just now"}</span>
-                </div>
-                <p className="mt-2 text-[13px] leading-6 text-[#94a3b8]">{comment.text}</p>
-              </div>
-            ))
-          ) : (
-            <p className="rounded-lg border border-white/[0.07] bg-surface p-4 text-[13px] text-[#475569]">No comments yet.</p>
-          )}
+          {comments.length ? comments.map((comment) => (
+            <div key={`${comment.source}-${comment.id}`} className="rounded-lg border border-white/[0.07] bg-surface p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[13px] font-semibold text-[#e2e8f0]">{comment.authorName || "Guest"}</span><span className="text-[11px] text-[#475569]">{comment.createdAt?.toDate?.().toLocaleString("en-GB") || "Just now"}</span></div>
+              <p className="mt-2 text-[13px] leading-6 text-[#94a3b8]">{comment.text}</p>
+            </div>
+          )) : <p className="rounded-lg border border-white/[0.07] bg-surface p-4 text-[13px] text-[#475569]">No comments yet.</p>}
         </div>
       </div>
     </div>

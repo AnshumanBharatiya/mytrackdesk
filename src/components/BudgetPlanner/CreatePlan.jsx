@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { MapPinned, Save } from "lucide-react";
 import { toast } from "react-toastify";
 import { auth, db } from "../../firebase";
-import { currencies, emptyCategoryLimits, inputClass, labelClass, makeShareToken, planStatuses, primaryButton, secondaryButton } from "./budgetUtils";
+import { currencies, inputClass, labelClass, makeShareToken, planStatuses, primaryButton, secondaryButton } from "./budgetUtils";
 
 export default function CreatePlan() {
   const navigate = useNavigate();
@@ -44,8 +44,6 @@ export default function CreatePlan() {
         currency: form.currency,
         status: form.status,
         notes: form.notes.trim(),
-        collaboratorEmails: [],
-        categoryLimits: emptyCategoryLimits(),
         shareToken: makeShareToken(),
         shareEnabled: false,
         createdAt: serverTimestamp(),

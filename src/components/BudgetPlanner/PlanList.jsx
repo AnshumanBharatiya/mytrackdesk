@@ -16,15 +16,8 @@ export default function PlanList() {
     try {
       const user = auth.currentUser;
       if (!user) return;
-      const ownedSnapshot = await getDocs(query(collection(db, "budgetPlans"), where("userId", "==", user.uid)));
-      const sharedSnapshot = user.email
-        ? await getDocs(query(collection(db, "budgetPlans"), where("collaboratorEmails", "array-contains", user.email.toLowerCase())))
-        : { docs: [] };
-      const planMap = new Map();
-      [...ownedSnapshot.docs, ...sharedSnapshot.docs].forEach((item) => {
-        planMap.set(item.id, { id: item.id, ...item.data() });
-      });
-      const rows = Array.from(planMap.values());
+      const snapshot = await getDocs(query(collection(db, "budgetPlans"), where("userId", "==", user.uid)));
+      const rows = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
       rows.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setPlans(rows);
     } catch (error) {
@@ -61,8 +54,6 @@ export default function PlanList() {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/[0.07] border-t-purple" /></div>;
   }
 
-  const user = auth.currentUser;
-
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -94,16 +85,13 @@ export default function PlanList() {
                     <span className="truncate">{plan.origin || "Start"} to {plan.destination}</span>
                   </p>
                 </div>
-                {plan.userId === user.uid && (
-                  <button onClick={(event) => handleDelete(event, plan.id)} className="rounded-md p-1.5 text-[#475569] transition-colors hover:bg-red/10 hover:text-red" title="Delete plan">
-                    <Trash2 size={16} />
-                  </button>
-                )}
+                <button onClick={(event) => handleDelete(event, plan.id)} className="rounded-md p-1.5 text-[#475569] transition-colors hover:bg-red/10 hover:text-red" title="Delete plan">
+                  <Trash2 size={16} />
+                </button>
               </div>
 
               <div className="mt-5 flex items-center justify-between">
                 <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusStyles[plan.status] || statusStyles.Planning}`}>{plan.status}</span>
-                {plan.userId !== user.uid && <span className="rounded-full bg-purple/10 px-2.5 py-0.5 text-[11px] font-medium text-purple">Shared</span>}
                 <span className="text-[18px] font-bold text-[#e2e8f0]">{money(plan.totalBudget, plan.currency)}</span>
               </div>
               <div className="mt-4 flex items-center gap-2 text-[12px] text-[#475569]">

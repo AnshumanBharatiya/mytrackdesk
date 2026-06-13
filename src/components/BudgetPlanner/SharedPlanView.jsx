@@ -141,9 +141,6 @@ export default function SharedPlanView() {
                 <div className="flex items-center justify-between border-b border-white/[0.07] bg-surface px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${categoryStyles[group.category]}`}>{group.category}</span>
-                    {Number(plan.categoryLimits?.[group.category]) > 0 && (
-                      <span className={`text-[11px] ${group.total > Number(plan.categoryLimits[group.category]) ? "text-red" : "text-[#475569]"}`}>Limit {money(plan.categoryLimits[group.category], plan.currency)}</span>
-                    )}
                   </div>
                   <span className="text-[13px] font-semibold">{money(group.total, plan.currency)}</span>
                 </div>

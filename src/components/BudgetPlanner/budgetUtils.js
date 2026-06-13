@@ -4,13 +4,6 @@ export const planStatuses = ["Planning", "Active", "Completed", "Cancelled"];
 
 export const budgetCategories = ["Travel", "Stay", "Food", "Activities", "Shopping", "Misc"];
 
-export const currencyRates = {
-  INR: 1,
-  USD: 83,
-  EUR: 90,
-  GBP: 105,
-};
-
 export const categoryStyles = {
   Travel: "bg-blue/10 text-blue",
   Stay: "bg-purple/10 text-purple",
@@ -55,12 +48,3 @@ export const makeShareToken = () =>
     .map((value) => value.toString(36).padStart(2, "0"))
     .join("")
     .slice(0, 10);
-
-export const emptyCategoryLimits = () =>
-  budgetCategories.reduce((limits, category) => ({ ...limits, [category]: "" }), {});
-
-export const convertCurrency = (amount, fromCurrency, toCurrency) => {
-  const fromRate = currencyRates[fromCurrency] || 1;
-  const toRate = currencyRates[toCurrency] || 1;
-  return ((Number(amount) || 0) * fromRate) / toRate;
-};
