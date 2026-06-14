@@ -10,14 +10,33 @@ import { formatDate, money, primaryButton, statusStyles } from "./budgetUtils";
 export default function PlanList() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sharedLoadWarning, setSharedLoadWarning] = useState(false);
 
   const fetchPlans = async () => {
     setLoading(true);
+    setSharedLoadWarning(false);
     try {
       const user = auth.currentUser;
       if (!user) return;
-      const snapshot = await getDocs(query(collection(db, "budgetPlans"), where("userId", "==", user.uid)));
-      const rows = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      const ownedSnapshot = await getDocs(query(collection(db, "budgetPlans"), where("userId", "==", user.uid)));
+      const planMap = new Map();
+      ownedSnapshot.docs.forEach((item) => {
+        planMap.set(item.id, { id: item.id, ...item.data() });
+      });
+
+      if (user.email) {
+        try {
+          const sharedSnapshot = await getDocs(query(collection(db, "budgetPlans"), where("collaboratorEmails", "array-contains", user.email.toLowerCase())));
+          sharedSnapshot.docs.forEach((item) => {
+            planMap.set(item.id, { id: item.id, ...item.data() });
+          });
+        } catch (error) {
+          console.error("Error loading shared budget plans:", error);
+          setSharedLoadWarning(true);
+        }
+      }
+
+      const rows = Array.from(planMap.values());
       rows.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setPlans(rows);
     } catch (error) {
@@ -54,6 +73,8 @@ export default function PlanList() {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/[0.07] border-t-purple" /></div>;
   }
 
+  const user = auth.currentUser;
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -66,6 +87,12 @@ export default function PlanList() {
           Create Plan
         </Link>
       </div>
+
+      {sharedLoadWarning && (
+        <div className="rounded-xl border border-amber/20 bg-amber/10 px-4 py-3 text-[13px] text-amber">
+          Your own plans loaded, but shared collaborator plans need updated Firestore rules.
+        </div>
+      )}
 
       {!plans.length ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.04] py-16 text-center">
@@ -85,13 +112,16 @@ export default function PlanList() {
                     <span className="truncate">{plan.origin || "Start"} to {plan.destination}</span>
                   </p>
                 </div>
-                <button onClick={(event) => handleDelete(event, plan.id)} className="rounded-md p-1.5 text-[#475569] transition-colors hover:bg-red/10 hover:text-red" title="Delete plan">
-                  <Trash2 size={16} />
-                </button>
+                {plan.userId === user?.uid && (
+                  <button onClick={(event) => handleDelete(event, plan.id)} className="rounded-md p-1.5 text-[#475569] transition-colors hover:bg-red/10 hover:text-red" title="Delete plan">
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
 
               <div className="mt-5 flex items-center justify-between">
                 <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusStyles[plan.status] || statusStyles.Planning}`}>{plan.status}</span>
+                {plan.userId !== user?.uid && <span className="rounded-full bg-purple/10 px-2.5 py-0.5 text-[11px] font-medium text-purple">Shared</span>}
                 <span className="text-[18px] font-bold text-[#e2e8f0]">{money(plan.totalBudget, plan.currency)}</span>
               </div>
               <div className="mt-4 flex items-center gap-2 text-[12px] text-[#475569]">

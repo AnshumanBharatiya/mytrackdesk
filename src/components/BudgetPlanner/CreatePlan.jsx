@@ -44,6 +44,7 @@ export default function CreatePlan() {
         currency: form.currency,
         status: form.status,
         notes: form.notes.trim(),
+        collaboratorEmails: [],
         shareToken: makeShareToken(),
         shareEnabled: false,
         createdAt: serverTimestamp(),

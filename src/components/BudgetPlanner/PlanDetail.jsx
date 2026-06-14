@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CalendarDays, Link as LinkIcon, MapPinned, MessageSquare, PlusCircle, Trash2, WalletCards } from "lucide-react";
+import { CalendarDays, Link as LinkIcon, MapPinned, MessageSquare, PlusCircle, Trash2, Users, WalletCards } from "lucide-react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { auth, db } from "../../firebase";
@@ -17,11 +17,11 @@ export default function PlanDetail() {
   const [saving, setSaving] = useState(false);
   const [shareSaving, setShareSaving] = useState(false);
   const [commentText, setCommentText] = useState("");
+  const [collaboratorEmail, setCollaboratorEmail] = useState("");
   const [form, setForm] = useState({ category: "Travel", title: "", amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
 
-  const fetchItems = async (userId = auth.currentUser?.uid) => {
-    if (!userId) return;
-    const snapshot = await getDocs(query(collection(db, "budgetItems"), where("userId", "==", userId), where("planId", "==", planId)));
+  const fetchItems = async () => {
+    const snapshot = await getDocs(query(collection(db, "budgetItems"), where("planId", "==", planId)));
     const rows = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
     setItems(rows);
@@ -44,15 +44,17 @@ export default function PlanDetail() {
       const user = auth.currentUser;
       if (!user) return;
       const snap = await getDoc(doc(db, "budgetPlans", planId));
-      if (!snap.exists() || snap.data().userId !== user.uid) {
+      const data = snap.data();
+      const collaboratorEmails = data?.collaboratorEmails || [];
+      if (!snap.exists() || (data.userId !== user.uid && !collaboratorEmails.includes(user.email?.toLowerCase()))) {
         toast.error("Plan not found!");
         navigate("/dashboard/budget-plans");
         return;
       }
-      const data = { id: snap.id, ...snap.data() };
-      setPlan(data);
-      await fetchItems(user.uid);
-      await fetchComments(data.shareToken);
+      const planData = { id: snap.id, ...data };
+      setPlan(planData);
+      await fetchItems();
+      await fetchComments(planData.shareToken);
     } catch (error) {
       console.error("Error loading plan:", error);
       toast.error("Failed to load plan!");
@@ -68,6 +70,8 @@ export default function PlanDetail() {
 
   const spent = useMemo(() => items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [items]);
   const progress = plan?.totalBudget ? Math.min((spent / plan.totalBudget) * 100, 100) : 0;
+  const currentUser = auth.currentUser;
+  const isOwner = currentUser?.uid === plan?.userId;
   const groupedItems = useMemo(() => {
     return budgetCategories.map((category) => ({
       category,
@@ -111,7 +115,7 @@ export default function PlanDetail() {
       }
       toast.success("Budget item added!");
       setForm({ category: "Travel", title: "", amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
-      fetchItems(user.uid);
+      fetchItems();
     } catch (error) {
       console.error("Error adding budget item:", error);
       toast.error("Failed to add budget item!");
@@ -134,6 +138,34 @@ export default function PlanDetail() {
     if (plan.shareEnabled) await deleteDoc(doc(db, "sharedBudgetItems", itemId));
     toast.success("Item deleted!");
     fetchItems();
+  };
+
+  const handleAddCollaborator = async (event) => {
+    event.preventDefault();
+    if (!isOwner) return toast.error("Only the owner can manage collaborators!");
+    const email = collaboratorEmail.trim().toLowerCase();
+    if (!email || !email.includes("@")) return toast.error("Enter a valid email!");
+    if (email === auth.currentUser?.email?.toLowerCase()) return toast.error("Owner is already included!");
+
+    const nextEmails = Array.from(new Set([...(plan.collaboratorEmails || []), email]));
+    await updateDoc(doc(db, "budgetPlans", planId), {
+      collaboratorEmails: nextEmails,
+      updatedAt: serverTimestamp(),
+    });
+    setPlan((current) => ({ ...current, collaboratorEmails: nextEmails }));
+    setCollaboratorEmail("");
+    toast.success("Collaborator added!");
+  };
+
+  const handleRemoveCollaborator = async (email) => {
+    if (!isOwner) return;
+    const nextEmails = (plan.collaboratorEmails || []).filter((item) => item !== email);
+    await updateDoc(doc(db, "budgetPlans", planId), {
+      collaboratorEmails: nextEmails,
+      updatedAt: serverTimestamp(),
+    });
+    setPlan((current) => ({ ...current, collaboratorEmails: nextEmails }));
+    toast.success("Collaborator removed!");
   };
 
   const shareUrl = plan?.shareToken ? `${window.location.origin}/shared/plan/${plan.shareToken}` : "";
@@ -300,6 +332,51 @@ export default function PlanDetail() {
           </div>
         </div>
         <div className="mt-4 overflow-x-auto rounded-lg border border-dashed border-white/[0.07] bg-surface px-3.5 py-3 text-[13px] text-[#94a3b8]">{plan.shareEnabled ? shareUrl : "Sharing is disabled. Generate a link when you are ready to share."}</div>
+      </div>
+
+      <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue/10 text-blue">
+            <Users size={20} />
+          </div>
+          <div>
+            <h2 className="text-[18px] font-bold text-[#e2e8f0]">Collaborators</h2>
+            <p className="mt-1 text-[13px] text-[#475569]">Owner can add logged-in users by email so they can edit this plan.</p>
+          </div>
+        </div>
+
+        {isOwner ? (
+          <form onSubmit={handleAddCollaborator} className="mb-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              value={collaboratorEmail}
+              onChange={(event) => setCollaboratorEmail(event.target.value)}
+              className={inputClass}
+              placeholder="friend@example.com"
+            />
+            <button className={`${primaryButton} whitespace-nowrap`}>Add User</button>
+          </form>
+        ) : (
+          <p className="mb-4 rounded-lg border border-white/[0.07] bg-surface p-4 text-[13px] text-[#94a3b8]">
+            You are a collaborator on this plan.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {(plan.collaboratorEmails || []).length ? (
+            plan.collaboratorEmails.map((email) => (
+              <div key={email} className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.07] bg-surface px-3.5 py-3 text-[13px] text-[#94a3b8]">
+                <span className="truncate">{email}</span>
+                {isOwner && (
+                  <button onClick={() => handleRemoveCollaborator(email)} className="text-[#475569] transition-colors hover:text-red">
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="rounded-lg border border-white/[0.07] bg-surface p-4 text-[13px] text-[#475569]">No collaborators yet.</p>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">
