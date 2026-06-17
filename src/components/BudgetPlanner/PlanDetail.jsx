@@ -53,8 +53,14 @@ export default function PlanDetail() {
       }
       const planData = { id: snap.id, ...data };
       setPlan(planData);
-      await fetchItems();
-      await fetchComments(planData.shareToken);
+      fetchItems().catch((error) => {
+        console.error("Error loading budget items:", error);
+        toast.error("Failed to load budget items!");
+      });
+      fetchComments(planData.shareToken).catch((error) => {
+        console.error("Error loading comments:", error);
+        toast.error("Failed to load comments!");
+      });
     } catch (error) {
       console.error("Error loading plan:", error);
       toast.error("Failed to load plan!");
